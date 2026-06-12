@@ -895,6 +895,12 @@ main {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .event-pill .ev-time { font-weight: 800; margin-right: 4px; }
+.event-pill .pill-flyer-icon {
+  width: 11px; height: 11px;
+  margin-left: 4px;
+  vertical-align: -1px;
+  opacity: 0.9;
+}
 .event-pill .pill-line2 {
   display: inline-block;
   background: var(--navy-deep);
@@ -1963,6 +1969,10 @@ main {
   flex-shrink: 0;
 }
 
+/* ── Aba Cabeçalho (config de identidade) ── */
+.header-config-grid { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.header-config-grid .field { margin: 0; }
+
 /* ── Botão pequeno (lightbox, ações de flyer) ── */
 .btn-sm {
   padding: 6px 10px;
@@ -2186,7 +2196,7 @@ img.person-photo-thumb:hover { transform: scale(1.06); }
         <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBxISEBUPDxAQFQ8XFRUVEBUQFRAVFRUVFxUXGBcVFhUYHSggGBolHRcVITEhJSkrLi4uFx81ODMsNygtLisBCgoKDg0OFxAQFy0dHR8tLS0rLS0tLS0tKy0tLS0tLystLS0tLS0tLS0tLS0tLS0tLS0tKy0tLS0tLS0tLS0tLf/AABEIAOEA4QMBEQACEQEDEQH/xAAcAAEAAQUBAQAAAAAAAAAAAAABAgADBQYHBAj/xABDEAACAQICBgUJBQYGAwEAAAABAgADEQQxBQYSIUFhBxNRcYEiMkJSYnKRocEjM4KisRRTc7LC8CRDY5LR4TREoxX/xAAbAQACAwEBAQAAAAAAAAAAAAAAAQIDBQYEB//EADERAAICAgEDAgQGAgIDAQAAAAABAgMEEQUSITFBURMiYXEyQoGRobEj0QbBM0NSFP/aAAwDAQACEQMRAD8A2a3975ypvDb/AKgBNV5/CAi4q/WIRfprAWz000jIs9VJZNFbPRTEkmQZeWSIMkBGIrZhoA2YtD2BSLQbIGnBxJbIMki0PZadZBokmWisraJ7IESLGEiS2NoARMAC8YFQAoiAFWgARANoDCMQX5wAxNpcTJBd0QFxVgBfVYiJ6EWGyLZ6EWMiy8kNkWXlMmmQLimS2RZJnAFyQAMydwHeZOKbfZbIyaXdmvaS15wFG4NfrG9WgOs/N5vzmhVxuRP8ul9Tx2Z1MPXZrWN6VgPuMISO2tUC/lUH+ae+vhX+ef7Hjnyi/LEw1fpOxreamGQcLI5PxZvpPUuIoXnbKHyVv0PDU6QtInKuo7qVH6qZauMx1+Ui8+5+pFekDSIzxAPfSofRYnxeM/ygs+5ep6KfSTjh5ww7e9TYfysJVPhsd+Notjydy9jJ4XpPOVbCC3E0qhv/ALWH1njs4H/4n+56Yct/9RM7gNesFV3Go1JjwrLs/mF1+JmZdw+TDultfQ91XI0z8vX3NgpVVdQ6MGU5FSCp7iN0y5wlB6ktHujJS7pjIEyjGAQAqIBgBVowKgBUQEYwKt/e6AGNVZaTJov974CLypviEXVSJi2X1ECLLyiMiyawERxWKSkhqVXVEGbOQB/fKWV1zsfTBbZVZZGC3J6Ro+nOkkC6YKntH97WBC/hp5nvJHdOhxeFb1K5/ojGv5VeK1+pomldM4jEm+IrO/YpNkHcg8kfCblOLVStQjoyrMiyx/M9mPtLyoIgAiAwgAWiGFoDAiAyMBnpwGkK1BtuhVem3sEgHvGR8ZTbRXatTimWV3Tre4vRuehekZhZMZT2h+8pCzDmyZHwt3TCyuCi/mpevozXo5ZrtYv1N+0dpGliKYqUKiunEqd4PYwO9TyM56/Hspl02LRsVXQsXVB7PTKC0q0AKgAwAq0AKgBExgVbn+sAPCElhIuqsQF1VgRLqLATZdSBEuKIhM17WbW6lhL01tUxHqA7k988O7Puzmtg8VZktSfaPuZuZyMKflXeRy/S2lq2Jfbr1Cx9EZIvJVyH6niTOtx8WrHjqC1/Zzd2RZc9zZ4CJ6CkCIDIxAURAZGAwtEGwIgMIDC0QwtAYWgAWgM9GAx9Wg4q0KjI44rx5EHcw5EESq6iu6PTNbRbXbOt7i9HTNVteKdcilidmlXNgpypueV/NbkfA8Jymfw8qdzq7x/lG9iclGz5Z9mbheYpqFRDKgBVoCKgMiYAVcR7A84WTGTCxCLqCAmXVENkSawEaTrfrjsXw+Eby8qlUeieKp7XaeHDfl0fGcR1atu8ei/2YXIcn0t11fqznbG5ud5O8k5k9pnUJaWkc8229sLRgBEBhaIZEiAwIgAWiGBgMIAFohhAYERAFoDC0BkSIDAiA9m86m67GnbD4xiaWVOqd5TsD9q8+Hdlz3JcSpp2Urv7e5sYPIuLULPHudLBuARkd47JyrTT0zeT2uxKAyoCCAwMAD4wAtASYy4ogRLiwEXFEQjSteNZyl8Jh28vKs4Pmj1FPrdp4ZZ5dJw/F9WrrV29F/2YHKchr/FW/uzn1p1JzuwtACMBlQAjaBIIDAiIAIgPYGIYWgGwtAYRDC0A2EBhaIeyMAAiAwgM3fULWvqmXCYhvsSbUXY/dngpPqHh2Hllz/LcYrE7q183qvc2OPznFqufj0+h00zlGdAnsqCAYAEYEdn+90AIoJINl1RAiTAgLZgtcNPfstLZpn7dwRT9kcXPdkOfcZq8Vgf/AKLOqX4V/P0Mvks34ENR/EzlTb95NzmSd5J7Z26SXZHI7be2RjAIBsLRDAiAwtAAIgMLQGBiAyGgaNGpXWlibilUITrFNjTYnyXtkRewIPAnIiVWuSjuPoXU9Ll0y9T061arV8BU2aw2qZJ6qqt9h+Xst7J+ecVV0bPBO6iVT7+DBS0pC0ACAwIiGEAC0BgREMCIDAiAzp/R5rH1yfslZr1kH2bNm9McObL8x3GclzHH/Dl8aC7Pz9DoeNzOtfDl5Xg3QTBNcBACjAAtAClEmJl1RAiGJxC00apUNkVSzHkPrLaq3bNQj5ZVbYq4uUvCOO6Y0g2IrPWfNj5I9VR5qjuHzueM+g4mNHHqVcfT+zh8nIlfY5s8Vp6NFAWiGBEACAwtEMLQALQGEAC0BkSItD2fQ+jaNPH6NojEoHWrQpmoD62yLsDwIO8GY0m4TevQ6GKVlS6vVHEdb9XXwOJNB7sh8qi/rpfj7QyI+hE1KbVZHZj30uqWvQwdpYUAYDC0B7AwALRDCAwtEMIAXcJiXpVFq0zaojBlPMdvaOBHEEyu2uNkHCXhlldjhJSXlHbtC6TXE0Erpkw3j1WG5l8D9JwOXjyotlW/Q7DHuV1amj2meYuEwAN0AKQSYi8sCLNN6RtJ2VcIpztUq9wPkL8QT4CdNwGJtu6X2RznN5WtVL7s0IidSc7sIAFotDCIAtAZG0BhAAIiGFoDC0AAwGj6Q1YwZo4LD0W85KNNW97ZF/neYlj3Js6SmPTCKZgelXRIraPapb7SgesQ+zezju2d/eoluNPpmvqUZlfVW36o4URNUxAIgMjEMCIAEBgREMLQAIDAiIZufRppfq6zYVj5FXenKoo+qj8omDzmL11q1eY+fsa/FZHTN1vwzps5I6MIwJQAUEkRZeBAFydw3k9gHGTjFtpL1K5y0ts45pfHGvXqVj6TEryUblHgAJ9DxKFTTGC9EcFk3O62U36njInpKCJEB7C0BhAAtFoYWiALQGEBhaAAREM3Po21UbFV1xNVT+y0mvv/AMyop3KO0A7z3W4m3kyrlFdK8nvw8dzl1Pwjt0zDbNe6QMUtPRuJLHzqZpjm1TyB+vyltMeqxIoyZKNUmcc1a1eOMoYrqx9tRVKlO3peftU/EDdzUdpmjbb0Sj7MyKKfiQlryjXZeecLQDZEiAwiGBEBhAAIiGEAJ4es1N1qIbOrBlPYQbiQsgpxcH4ZOE3CSkvQ7lo/GCtSSsvmuqsOVxe3gd0+eX1OqyUH6M7WmxWQUl6novKiwbmAFxBJogzFa44zqsHUI857U1/H535dqavE0/FyY/TuZnK3fDx5e77HKyJ3JxIWgMIABEBgRAZGAyiIAFohgREMuYXCVKrinSR3c5KgLE+A4SMpKK22TjGUnqK2dC1X6MHYirpA7K59Shux5O480cl38xPDbl+kDTo49+bP2OpYbDpTQU6aqqKLKqgAADgAJ4W2/JqqKS0iVSoFBZiAoFySQAAMyTwEQN6Xc4l0ja3fttQUaJP7LTJIOXWPlt+6BcDvJ47tPGp6F1PyYuXkfEfTHwjoPRpq82Ewm1VFq9Yh6gOai3kIeYG882InjybOufbwjQxKfhw7+Wch1pwHV4/E0aYuFq1CoHBd72A7Av6TRqluuLZlXw1bJIw1paUBaAwtAYWiGFoARtAZVogI2gM6d0a43bwrUjnScge6/lD57fwnIc7T0Xqa/MjpuIt6qnH2NvmGaw2j0LZcSTRE1DpIxG6jSGV3c+ACr+rTp/8Aj1Xec/0Oa5+ztCH6mjzpzmgiGBEBhAAtAAtAeyJECQQAz+qOq1XHVLL5FBT9rUIy9lRxY/LM8AfPfeq19T142NK6X09ztOg9BUMJT6vD0wvrNm7ntZsz+g4TJnZKb3I3qqYVrUUZOQLTH6Z0zQwtPrcRUCL6IzZj2KubGThCU3qKK7LY1rcmcc1x12rY49TTDU8Newpjz6hvu2yM+Sjd37ppU48a1t+TGvy5XPpj4Nn6P9QSjLjMavlizUaLeieD1B63YvDM79w8+Rk7+WPg9WJh9Pzz/Y6TWqKil2ICqCWJyAAuSfCeJI0m9LZw3V6scXptKyg2eu9XLKmAzWP4QB4zUsXRRoxapfEyd/UsdImrowWLIpi2HqgvR7F3+XT8CR4MI8a3rj38ojl0/Dn28M1a09J5QtEAEQJESIAEQwtAAgM2/oyxOziqlLg9K/4kYW+TNMHnquqmMvZ/2bHD2atcfdHTQZyR0pO392EBFU5KJFmgdIFS+KA4LSUeJZj9RO14GCWNv3ZxvOT3k69kazNoxggMIDC0QBaAwgBREBno0bgHr1koUx5bsFHK+ZPIC5PdIWTUItstqg7JKK9T6B0JounhaCYekLKoz4seLHmTvmHObnJtnT1VquKij2VKgUFmICgXJJAAAzJJykSbevJzvWjpLRL0sABUfI1W+7HuDN+/cO+e2rEcu8+xm5HIKPavuaNgdF43SdYuNuo17PVqkhF5bWQ91R4T1SnXStHghXdkS35+p1PVPUahg7VGtVxP7xhuX+Gvo9+f6TPuyJWfRGvj4kKu/lm1mUHrOUdJWuq1VbBYRr08q9VTua3+WhGa9p45ZXnvxsfXzyMnNyk/kh+pluinVg0aZxtZbVai2pKc1pbjc9hbce4DtMryrup9K8IuwcfoXVLyy90w4MNgVq+lTqqQeNmBUj4lT4RYj1Zr3JZ8d1b9jjE1DEC0BkYDAiIYWgMLQAIhma1JqbOPo8yyn8SMP1tM7lYdWJM9/Gy1kQOwicN5OuJ7ENC2FOSQmc411a+Nqcgg/Iv/ADO64ZaxI/qcPzD3ly/QwU1DLKtAYGAwgARDC0BhADfeiHR4fE1cQR92gVfeqE7xzAUj8U8GdLSUfc1eLr3Ny9jqeMxSUqbVajBaaglmOQAmck29I2pSUU2ziuuOt1XHP1VPaXDXslMX2qhvuLgZm+S8OZ3zVox41Lql5MHJy5XS6Y+P7Nk1R6OBYV9IC53FaAO4fxCMz7I8b5Tz3ZbfaB6sbj0vms/Y6RQoKihEVVQCyqoAAHYAMp4W9+TVSSWkY7T2sOHwabeIqAE+ag3u/ur9cucnXXKb1FFVt8KluTOSa1694jGXpUwaOHO7YU3dx2Ow7fVG7vmlVixh3l3Zj35s7flj2RntROj83XFY5LAWNKg2fJqo4e78eyUZGTv5YHpxML89n7HUQJ4TVNB6YtIBcImHuNupUBt7CC5P+4oPGevDjue/Yz+Qnqvp9zjlppmMFoABEBgRAYRBsLQGRIgMyOrjWxmHP+tTHxYD6zyZy3jWfZnqw3q+H3O0pOAR2Zese2MRaSJDZznXJf8AG1OYQ/8AzWd5wz3iROF5hay5foYQiahmBaABEMqAEYDCAyoAdW6IKdsLWbia9vAU0P8AUZk5z+dfY3uK/wDFJ/Uw3Srp8vVGBpn7NLNWt6VQi6qeSix7zyl2FV263+hRyWRt/DXp5Mj0YarAKMfXW7t/44Por+87zw5b+Mqy7tvoj4LuPxtL4kvPodEqOFBZiAALkk2AAzJM8RqN6RzjWvpJC3o4CzNkazC6j+Gp873ju5Ge6nEb7zMvI5FL5a/3NH0ZofGaQqlkD1GJ+0q1Sdke85/lFzynrlZXStHghVbkS35+p1XVPUWhg7VH+1xPrsPJT+GvDvz7spnW5ErO3hGxj4cKu77s2yec9hj9N6Yo4Ska1dwqjIekx4Ko4mShBzekV22xrjuTOC6zacqY3ENXqbh5tNMwiDJeZ3kk8STNiqpVx0c/fe7Z9TMTaWlIWiALQGEAC0BhAYWiGe/V1L4zD/xqfycGeXOesez7M9OH3vh9ztaCcAjtGXLRiLCSKJs0LXqnbFX9amh+bD6CdtwMt4uvZs4nnY6yt+6Rrs2jGCAAREMIAVAYWgAQGdR6LsWtPAYl2yp1HqN3Ckh/pMy8yO7Ejd42ajTJ+z/6NB0VhWxuNRHJ2q1UtVI7CS7kdm7antm1VV9jMqi7rlv1Z3lnSlTuSqU0Xffcqqo+QAExe7Z07ajHfojjWuuuL4xjSpkphAdy5Gpb0n5di/Hflq4+MoLcvJgZeZK16j+H+zL6mdHvWBcRjgwpnelHeGYcDUOaj2c+22UqyMv8sP3PRiYG9Ts/Y6hh8OlNQlNVVALKqgAAdgAyme229s2IxUVpFy8QzS9a+kGjhr0sPs1sRvG4/ZofaYZkeqPEieqnFlPu+yPBkZ0K+0e7OS6X0tWxVTrcRUZ34X3Ko7FUblE0oVxgtRRjW3Sse5M8NpMrIkQAqAwtEMjaABaAwgMLQAzOp1Lax9AdjFv9qM30mfykunFme7jlvIgdipicPFHYMv7PKWaIHiSedFzNT6QKH3VTh5SH5Ef1Tq/+O2dpw+zOV/5FX+Cf6Gn2nTHMhAYQACIDC0ACICoDNq1Rxmzg9I0b72w+2o5AMrfzLPHkR/yQf1NLDn/itj9D09E+H2scznJKLEd7Mo/Takc5/IkT4uO7W/ZGW6WdNkBMChttAVK1uK38hfEgnwEqwqttzZ6OTva1WvXyeDoz1WFVv22ut6am1BTkzjNzyU7hzv2SeXfr5F+pXx2L1f5JePQ6tM02zE6wax4fBptV38ojyKa73buXs5mwlldUrHqKKLsiFK3JnJ9Z9eMTi7op6nDndsUybsPbfM9wsO+adOLGHd92YmRnTt7LsjVLT1HjCABaLQwiACIDCAwtAAIiGFoDC0ANr6NsNtYtqltyUz8WIUfLamLzlnTQo+7Njh4dVzl7I6lTE5SKOlbL1u+T0Q2Y9Z5UegxOt+G6zCMeKEVB4bj+Ut8JscJd8PKSfiXYx+ao+Jiya/L3OdWndHDBaIAtAZVoDC0AC0BkYgPZo3FdWz+q9KrSb8aG35gh8JXZDq19GXVWdDf1WjcOiI/4msOPVC3g4/5E8ed+FGlxL+eX2MBrMzYrSdVV856/Up2eSRSHhuvL6f8AHSn9NnmyG7clpe+jtWjsGlCklGmLIihV8BmeZzmPKTk9s6OuChFRXoatrvrqMLehQs2KI3k71pA5Fu1uxfE8L+nHxnZ3fg8WZmqr5Y95f0cixeJeq5qVXZ6jG7MxuT/fZNWMVFaRgTnKb3J7LEkRAiA9gRAYQGEAC0QwIiGFoAFoDC0QwIgB0bozwOzQesRvqPYe6m7+Zm+E5Tnbeq2Nfsv7On4arpqc/f8A6N5prMeKNVsv7PIfGWaIbMVPEeopkDKVbepBBv2HcRJ1zcJKS9CuyCnFxfqcsxuGNKo1Js1Yr3gZHxFj4z6Tj3K6qNi9UfN8il02yrfozzy4pKgMIhhANhAYEQAIhm2dGOJCaQVSfvKbp47n/onkzY7r+xo8ZPV2vdEdSqPWaXVjwetUPfZrfMiK96x/2JYkerL+zZ0jXLToweFaoLda3kUQfXIzPIAE+FuMzqKviTSNjLv+DW36+hwytUZmLuSzMSWJ3kk7yTzm4opLSOYlJye2QgICIAEBhAAIgMiRAkEAKIiGEAAiIZG0BiiFiFUXYkBQOJO4CRlJRTb9CUU5NJep2zQuBFGhToj0FAJ7WzY+JufGcFkW/GtlP3O3oq+FVGHsZWksUUSbL2zJ6IGEHdM09pIGSQmajrzo+zLiFG4+RU7x5p8RceAnWf8AH8vcXQ/Tujkv+QYupK+Pr2Zqk6Y5oIABgBVohkbQGVAYQA9WisYaNenXGaOrd4B3jxFx4yuyHXFxLabOial7Gy9Hbj/9Q2NwVrbJ7d9x8hPLlrVK/Q0OPaeS377J9KuPL4taIPk0kG7233n8uxFgw1Fy9x8rbuxQ9jSZ7jLCAwgBVohgRAYQALQGRIgPYWgMIAFotDC0QGz6gaK63E9cw+zpeV3ufNHhvbwHbMbmcr4VPQvMv6NjiMf4lvW/Ef7Op01nJxR1DZ66Yl8Sll20s0R2a/Mo95MSQmRxmEWrTak/msLd3YRzB3z0410qLFZHyjzZNEb65Vy8M5fjcK1Ko1Jx5Smx59hHIix8Z9DoujdWpx8M+d30ypscJeUWLS4qCAFQAIDCIAtAewgMzOpuK6rH4dzl1mwfxgp/UJRlR6qpHrwp9F8Wx14e+kMQfbA+CqB+kWL/AOKI857yJmCl55CoDAwALQGEQwIgAWgMLQACIDAiA9kYDJU6ZZgqgliQFAzJJsAPGQnJRi5S8IlGLk0l5Z2DVvRIw2HWkLFvOqEcXOfgNwHICcJm5TybnN+PT7HbYeMsepQ9fX7mbpLKYovZ6aYl8UVMuSZE18TJNAuKJJIg2XkWWpEWzAa46C66n19IXrIPKAzdOzvGY8eU3+Hzfgy+HP8AC/4Zz/M4Pxo/FgvmX8o57OtOQKgAQGEACAFRDC0BlAkG4NiN4I4EZGJra0Si9PZ7dO4sVsQ9censseTFF2h4NcSumHRBRLsiz4ljl7mPtLSgLRDCAyrQALQGFoAEQyJEBlQACIDAiA9m8ag6BtbGVRncUAezI1PHIeJ7JzHNZ+/8EH9/9HR8Pg/+6a+3+zfEE5xLR0DPTTE9ESpl9ZaiDJXkiJhAsy9Hu2XUWWIg2eimkuiits9CJLoxK2zQtdtWTTJxVBfsjvrKPQPrgeqePZ3ZdPxmf1L4Vj7+hyvK8f0N21rt6/Q02bhhBEAWgAQGVAAiAIDKMBhAYQACIDIxAVAYWgAQGFohgRAAtAZseqOrhxL9bVBGHU7/APUYeiOXafDux+U5FY8XCD+Z/wAGtxnHu+XXNfKv5OmIthYDcNwtwnGbbe35OvSSWkXkEnEiy+kuiQZdBlqIDtc5IDFKJmxPUy/TWWxK2z001l8UVtnoRZfFFbZPYB3EbuN5Yk09og+/ZnOtb9TjSviMKpNHN6Y3mnzXtTlw7suiweQ60oWeff3OZ5DjHDdlXj1XsaXNgxAgBUQBaAwgBUACAwtEMIDCAARAAtEMIAVAYWgMLRDNj1W1WbEkVaoK4Yccmqcl7B2t8OWRyPJxoThDvL+jV4/jZXvqn2j/AGdJpUVRQiKFRRZVXcABwAnHTnKcnKT22ddCChFRitJFwSKJE1k0Jl0GWogxLyxMWiPWQ6g0eVRM9F7L9OXRZWz00zPRFlbL6T0RK2XVlqIMbR6EzTdZ9SFqk1sLspVO9kyRzy9Vvl3ZzWxORdeo2d17mNm8VGzc6uz9vQ5zi8K9JzTqoyOM1YWP/Y5zdhZGa3F7Rzllcq5dMlplmTIBEAQAq0BhAAgMq0QBaAwgMIAFoDIxASp0yxCqpZjuUKCST2ADORlOMF1SekSjFyeorbN41d1KAtVxgByK0gbj8ZGfujx7JzmfzW9wo/f/AEdHg8P4nd+3+zddwFgABwA7Oyc3KTb2zooxSWkQLSGyQAxoCYaWIi0JeWIWi09WGxpFrrOcNh0l9Z4tk2XqZl0WVs9FMz0QZWz0JPTErZdWXIgyUnoRVogPBpXRNHEpsV6YYeicmX3WG8Sym+yp7g9FF+NXctTWzQdM6g1qd2wzdanqtZag+jfLum1RysJdrFpmBk8PZDvW+pfyajiKDIxSorK4zVwVPwM1IzjNbi9mROEoPUlpluSIhEAWgMIAVAAgMIgC0BiiEkKoJY5BQST3AZxSkorbeiUYuT0ls2PRWpderZq1qKe1vc9y8PG3dMfK5mmrtD5n/Br4vD3Wd5/Kv5N30ToWhhhaknlek7WLnx4DkLCczlZ92Q/nfb29DpcXBqx18q7+/qe9mnibPakW2aQ2NIgXhseitqSQAXlgtEHqSWw0WHqw2SSLPW8/0i2PRlRPMQLqmWIiz0UzL4MqkehDPVBlbL6mXxZWyYlpEbR6AjaRaGRIlbGebG4GlWXZrU0deAcA27uyShdOt7i9FdlNdi1OOzWNIagYZ99JqlI9gO2vwbf+ae+rl7Y9prqMy3haZfgbiYDF9H+IX7upRcc9pD8LEfOe6HM0v8SaPBZwly/C0zF1tUsav/rseatTb9GvPTHksaX5zyS4zKj+Q8j6BxQzwtfwpuf0EtWbQ/zoqeFkL8jIroPFHLDV/Gm4/UQebjr86GsLIf5GeinqvjGyw7j3ii/zGUy5PFj5mWx4zKl+QyGG1FxLfePRQe8zH4KLfOeSznKI/hTZ7K+Dvl+JpGYweotBd9apUqHiBamvyufnM67nbJdoR0aNPBVR/HJv+DP4LAUaItRpIg4lRvPe2Z8TMi7Lttfzy2a9OLVUtQjovl55Gz0pFtmkGySRFmiJaIFohotl40PRAvaTQaImrJJi0WXqR7H0lp3jJaIbciMzsoKS4pliIsv02lsWVs9CGemDKmi+hnpiytl0GXJkSV5IQRMZEytjIEyDGRJlYyBMi2SSIM0g2SSLbNINkkiBeR2PRbLyOySRAvI7HogXkWySRDbkNkkiBaR2PREtEMts3OIkW2eMNFtnkhlsvGgLbVPjJAWme8Y9EC0B6IWMQGy8JSigkM5NEWX14y1EGehJ6I+hWz0JPTEqkXRL0QJCSEBgMiZBjRAypkiJkBottK2SRbeQYy0ZBk0QMi/BNFp8pBjRGIkWzIEkQPCRAi0QyIgMtmAy00YwbMd30jAsvxjQy3JCIj/mMkWjw7ohoIAf/9k=" alt="ADVEC Sobradinho" />
       </div>
       <div class="brand-text">
-        <h1>ADVEC Sobradinho</h1>
+        <h1 id="hdr-church-name">ADVEC Sobradinho</h1>
         <div class="agenda-chip">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
           <span>Agenda Oficial</span>
@@ -2204,25 +2214,25 @@ img.person-photo-thumb:hover { transform: scale(1.06); }
          Também atualize o aria-label do bloco e o ano no comentário acima.
          Ano atual: 2026
          ════════════════════════════════════════════════════════════════════════════ -->
-    <div class="topbar-banner" role="img" aria-label="Ano da Oração 2026 — Orai sem cessar (1 Ts 5:17)">
-      <span class="b-year">2026</span>
+    <div class="topbar-banner" role="img" aria-label="Ano da Oração 2026 — Orai sem cessar (1 Ts 5:17)" id="hdr-banner">
+      <span class="b-year" id="hdr-year">2026</span>
       <div class="b-title">
-        <span class="b-script">Ano da</span>
-        <span class="b-shout">ORAÇÃO</span>
+        <span class="b-script" id="hdr-script">Ano da</span>
+        <span class="b-shout" id="hdr-shout">ORAÇÃO</span>
       </div>
       <div class="b-verse">
-        <span class="b-verse-title">ORAI SEM CESSAR</span>
-        <span class="b-verse-ref">1 TS. 5:17</span>
+        <span class="b-verse-title" id="hdr-verse-title">ORAI SEM CESSAR</span>
+        <span class="b-verse-ref" id="hdr-verse-ref">1 TS. 5:17</span>
       </div>
     </div>
     <div class="leadership">
       <div class="lead-row">
         <div class="lead-label">Pastor Dirigente</div>
-        <div class="lead-name">Pr. Márcio Nascimento</div>
+        <div class="lead-name" id="hdr-leader">Pr. Márcio Nascimento</div>
       </div>
       <div class="lead-row">
         <div class="lead-label">Vice Dirigente</div>
-        <div class="lead-name">Dc. Willian Borges</div>
+        <div class="lead-name" id="hdr-vice">Dc. Willian Borges</div>
       </div>
     </div>
     <div class="topbar-actions">
@@ -2438,6 +2448,57 @@ const AGENDA_START = "2026-05-01";        // antes disso: agenda inativa
 const NEW_STRUCTURE_DATE = "2026-05-17";  // a partir desta data: nova estrutura
 
 // ════════════════════════════════════════════════════════════════════════════
+// IDENTIDADE / CABEÇALHO — valores padrão (editáveis pelo ADMIN nas configurações)
+// Guardados no Firestore em config/site; aqui ficam os fallbacks usados enquanto
+// não há config salva (e como base para "restaurar padrão").
+// ════════════════════════════════════════════════════════════════════════════
+const SITE_CONFIG_DEFAULTS = {
+  churchName: "ADVEC Sobradinho",
+  year:       "2026",
+  yearScript: "Ano da",
+  yearShout:  "ORAÇÃO",
+  verseTitle: "ORAI SEM CESSAR",
+  verseRef:   "1 TS. 5:17",
+  leaderName: "Pr. Márcio Nascimento",
+  viceName:   "Dc. Willian Borges",
+};
+// Configuração efetiva (defaults sobrepostos pelo que estiver salvo no Firestore).
+function getSiteConfig() {
+  return { ...SITE_CONFIG_DEFAULTS, ...(state.siteConfig || {}) };
+}
+
+// Aplica a configuração do cabeçalho no DOM (topbar, banner, dirigentes) e no
+// título da aba. Chamado na inicialização e sempre que a config muda no Firestore.
+function applyHeaderConfig() {
+  const c = getSiteConfig();
+  const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+  set("hdr-church-name", c.churchName);
+  set("hdr-year", c.year);
+  set("hdr-script", c.yearScript);
+  set("hdr-shout", c.yearShout);
+  set("hdr-verse-title", c.verseTitle);
+  set("hdr-verse-ref", c.verseRef);
+  set("hdr-leader", c.leaderName);
+  set("hdr-vice", c.viceName);
+  const banner = document.getElementById("hdr-banner");
+  if (banner) banner.setAttribute("aria-label", `${c.yearScript} ${c.yearShout} ${c.year} — ${c.verseTitle} (${c.verseRef})`);
+  document.title = `${c.churchName} — Agenda`;
+}
+
+// Salva (merge) a configuração do cabeçalho. Apenas ADMIN.
+async function saveSiteConfig(data) {
+  if (!isAdminUser()) { showToast("Apenas o administrador pode editar o cabeçalho", "error"); return false; }
+  try {
+    await setDoc(doc(fbDb, "config", "site"), {
+      ...(state.siteConfig || {}), ...data,
+      updatedAt: serverTimestamp(),
+      updatedBy: state.auth.user?.uid || null,
+    }, { merge: true });
+    return true;
+  } catch (err) { showToast("Erro ao salvar cabeçalho: " + err.message, "error"); return false; }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // TEMPLATES DE EVENTOS RECORRENTES
 // ════════════════════════════════════════════════════════════════════════════
 // Campos editáveis disponíveis:
@@ -2460,8 +2521,8 @@ function getRecurringEventsForDate(dateStr) {
       // Antes de 17/05: 2 cultos
       if (isSantaCeia) {
         // 1º domingo do mês (ou 2º se 1º é dia 01) — Santa Ceia
-        events.push(template("dom_sc_old_0930", "Santa Ceia (Transmissão)", "09:30", "SANTA_CEIA", []));
-        events.push(template("dom_sc_old_1830", "Santa Ceia (Transmissão)", "18:30", "SANTA_CEIA", []));
+        events.push(template("dom_sc_old_0930", "Santa Ceia (Transmissão)", "09:30", "SANTA_CEIA", ["preacher"], { preacher: "Pr. Silas Malafaia" }));
+        events.push(template("dom_sc_old_1830", "Santa Ceia (Transmissão)", "18:30", "SANTA_CEIA", ["preacher"], { preacher: "Pr. Silas Malafaia" }));
       } else {
         events.push(template("dom_cel_0930", "Culto de Celebração – Manhã", "09:30", "CULTOS", ["preacher"]));
         events.push(template("dom_cel_1830", "Culto de Celebração – Noite", "18:30", "CULTOS", ["preacher"]));
@@ -2471,8 +2532,8 @@ function getRecurringEventsForDate(dateStr) {
       if (isSantaCeia) {
         // Primeiro domingo do mês (ou 2º se 1º é dia 01) — Santa Ceia
         events.push(template("dom_edp_0900", "EDP", "09:00", "CULTOS", ["professor"]));
-        events.push(template("dom_sc_1000",  "Santa Ceia (Transmissão)", "09:30", "SANTA_CEIA", []));
-        events.push(template("dom_sc_1830",  "Santa Ceia (Transmissão)", "18:30", "SANTA_CEIA", []));
+        events.push(template("dom_sc_1000",  "Santa Ceia (Transmissão)", "09:30", "SANTA_CEIA", ["preacher"], { preacher: "Pr. Silas Malafaia" }));
+        events.push(template("dom_sc_1830",  "Santa Ceia (Transmissão)", "18:30", "SANTA_CEIA", ["preacher"], { preacher: "Pr. Silas Malafaia" }));
       } else {
         // Domingo normal (após 17/05)
         events.push(template("dom_edp_0900", "EDP", "09:00", "CULTOS", ["professor", "lesson"]));
@@ -2490,11 +2551,11 @@ function getRecurringEventsForDate(dateStr) {
   // ─── QUARTA ───
   if (dow === 3) {
     if (isThirdWednesday(date)) {
-      // 3ª quarta do mês = Santa Ceia (pregador e local a definir)
+      // 3ª quarta do mês = Santa Ceia (local Advec Sobradinho; pregador a definir)
       events.push(template(
         "qua_santaceia_2000", "Santa Ceia", "20:00", "SANTA_CEIA",
         ["preacher", "location"],
-        { location: "" }  // sem local pré-preenchido
+        { location: "Advec Sobradinho" }
       ));
     } else if (!isNew) {
       events.push(template("qua_edp_2000", "EDP", "20:00", "CULTOS", ["professor", "lesson"]));
@@ -2505,7 +2566,6 @@ function getRecurringEventsForDate(dateStr) {
 
   // ─── QUINTA ───
   if (dow === 4) {
-    events.push(template("qui_seminario_1900", "Seminário Teológico", "19:00", "DIVERSOS", ["preacher"]));
     events.push(template("qui_vitoriosas_2000", "Encontro de Crescimento das Vitoriosas", "20:00", "VITORIOSAS", ["preacher"]));
     // Quinta imediatamente após a Santa Ceia da 3ª quarta → Santa Ceia Regional (BSB)
     if (isThursdayAfterSantaCeia(date)) {
@@ -2521,11 +2581,14 @@ function getRecurringEventsForDate(dateStr) {
 }
 
 function template(templateId, title, time, ministry, editableFields, opts = {}) {
-  return {
+  const t = {
     templateId, title, time, ministry, editableFields,
     isRecurring: true,
     location: opts.location !== undefined ? opts.location : "Advec Sobradinho"
   };
+  // Pregador(a) pré-preenchido (continua editável via override por data)
+  if (opts.preacher !== undefined) t.preacher = opts.preacher;
+  return t;
 }
 
 // 3ª quarta-feira do mês (sempre cai entre os dias 15 e 21)
@@ -2593,10 +2656,11 @@ const state = {
   customMinistries: {},      // { key: { label, color, text } } — tipos cadastrados pelo admin
   monthlyNotices: {},        // { "YYYY-MM": { biblicalReading, prayerMotives, monthVerse, verseReference } }
   specialPeriods: [],        // [{ id, name, startDate, endDate, bgColor, textColor }]
+  siteConfig: {},            // identidade do cabeçalho (config/site no Firestore) — ver SITE_CONFIG_DEFAULTS
 
   // ── Modal de configurações ──
   showSettings: false,
-  settingsTab: "people",      // "people" | "locations" | "ministries" | "notices" | "users" | "backup" | "periods"
+  settingsTab: "people",      // "people" | "locations" | "ministries" | "notices" | "users" | "header" | "backup" | "periods"
 
   // ── Autenticação ──
   auth: {
@@ -2644,6 +2708,8 @@ onAuthStateChanged(fbAuth, async (user) => {
     state.customMinistries = {};
     state.specialPeriods = [];
     state.monthlyNotices = {};
+    state.siteConfig = {};
+    applyHeaderConfig();
     renderAuthScreens();
     return;
   }
@@ -2886,6 +2952,19 @@ function initFirestoreListeners() {
       state.specialPeriods.sort((a,b) => (a.startDate || "").localeCompare(b.startDate || ""));
       render();
     }, errOnSnapshot("specialPeriods"))
+  );
+
+  // Identidade / cabeçalho (config/site) — editável pelo admin
+  firestoreUnsubscribers.push(
+    onSnapshot(doc(fbDb, "config", "site"), (snap) => {
+      state.siteConfig = (snap.exists() && snap.data()) ? snap.data() : {};
+      applyHeaderConfig();
+      render();
+    }, (err) => {
+      // Falha graciosa: o cabeçalho usa os valores padrão. Sem toast para não
+      // alarmar caso as Security Rules de "config" ainda não tenham sido publicadas.
+      console.warn("Listener config/site indisponível (usando cabeçalho padrão):", err?.message || err);
+    })
   );
 
   // Seed inicial dos locais (só roda se a coleção tiver vazia)
@@ -4064,8 +4143,8 @@ function renderCalendar() {
       const styleStr = isEmpty
         ? `color: ${m.color}; background: ${m.color}10; border-left-color: ${m.color};`
         : `color: ${m.text}; background: ${m.color}; border-left-color: ${m.color};`;
-      return `<div class="event-pill ${isEmpty ? "recurring-empty" : ""} ${isGuestLine ? "guest-line" : ""}" style="${styleStr}" title="${escapeHtml(e.title)}${line2 ? ' — ' + escapeHtml(line2) : ''}${line3 ? ' — ' + escapeHtml(line3) : ''}${isGuestLine ? ' (convidado(a))' : ''}">
-        <span class="pill-line1">${e.time ? `<span class="ev-time">${escapeHtml(formatTime(e.time))}</span>` : ""}${escapeHtml(e.title)}</span>
+      return `<div class="event-pill ${isEmpty ? "recurring-empty" : ""} ${isGuestLine ? "guest-line" : ""}" style="${styleStr}" title="${escapeHtml(e.title)}${line2 ? ' — ' + escapeHtml(line2) : ''}${line3 ? ' — ' + escapeHtml(line3) : ''}${isGuestLine ? ' (convidado(a))' : ''}${e.flyer ? ' (com flyer)' : ''}">
+        <span class="pill-line1">${e.time ? `<span class="ev-time">${escapeHtml(formatTime(e.time))}</span>` : ""}${escapeHtml(e.title)}${e.flyer ? `<svg class="pill-flyer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>` : ""}</span>
         ${line2 ? `<span class="pill-line2">${escapeHtml(line2)}</span>` : ""}
         ${line3 ? `<span class="pill-line3 ${!e.lesson ? 'pill-line3-empty' : ''}">${escapeHtml(line3)}</span>` : ""}
       </div>`;
@@ -4881,6 +4960,58 @@ function renderSettingsModal() {
         }
       </div>
     `;
+  } else if (tab === "header" && isAdminUser()) {
+    const c = getSiteConfig();
+    bodyHtml = `
+      <p class="settings-hint">Edite a identidade exibida no <strong>cabeçalho</strong> (e usada na Programação Semanal). Disponível apenas para administradores. As mudanças valem para todos os usuários.</p>
+      <div class="header-config-grid">
+        <div class="field">
+          <label class="field-label" for="cfg-churchName">Nome da igreja</label>
+          <input id="cfg-churchName" class="input" type="text" value="${escapeHtml(c.churchName)}" placeholder="Ex: ADVEC Sobradinho">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label" for="cfg-year">Ano</label>
+            <input id="cfg-year" class="input" type="text" value="${escapeHtml(c.year)}" placeholder="Ex: 2026">
+          </div>
+          <div class="field">
+            <label class="field-label" for="cfg-yearScript">Subtítulo do ano (cursivo)</label>
+            <input id="cfg-yearScript" class="input" type="text" value="${escapeHtml(c.yearScript)}" placeholder='Ex: Ano da'>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="cfg-yearShout">Tema do ano (destaque)</label>
+          <input id="cfg-yearShout" class="input" type="text" value="${escapeHtml(c.yearShout)}" placeholder="Ex: ORAÇÃO">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label" for="cfg-verseTitle">Texto do versículo</label>
+            <input id="cfg-verseTitle" class="input" type="text" value="${escapeHtml(c.verseTitle)}" placeholder="Ex: ORAI SEM CESSAR">
+          </div>
+          <div class="field">
+            <label class="field-label" for="cfg-verseRef">Referência</label>
+            <input id="cfg-verseRef" class="input" type="text" value="${escapeHtml(c.verseRef)}" placeholder="Ex: 1 TS. 5:17">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label" for="cfg-leaderName">Pastor dirigente</label>
+            <input id="cfg-leaderName" class="input" type="text" value="${escapeHtml(c.leaderName)}" placeholder="Ex: Pr. Márcio Nascimento">
+          </div>
+          <div class="field">
+            <label class="field-label" for="cfg-viceName">Vice dirigente</label>
+            <input id="cfg-viceName" class="input" type="text" value="${escapeHtml(c.viceName)}" placeholder="Ex: Dc. Willian Borges">
+          </div>
+        </div>
+      </div>
+      <div class="settings-add-row" style="justify-content: flex-end; gap: 10px;">
+        <button id="cfg-reset-btn" class="btn btn-light">Restaurar padrão</button>
+        <button id="cfg-save-btn" class="btn btn-primary">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          Salvar cabeçalho
+        </button>
+      </div>
+    `;
   } else if (tab === "backup") {
     bodyHtml = `
       <p class="settings-hint">
@@ -4940,6 +5071,7 @@ function renderSettingsModal() {
     <button class="settings-tab ${tab === 'periods' ? 'active' : ''}" data-settings-tab="periods">Períodos Especiais</button>
     <button class="settings-tab ${tab === 'notices' ? 'active' : ''}" data-settings-tab="notices">Avisos do Mês</button>
     ${isAdminUser() ? `<button class="settings-tab ${tab === 'users' ? 'active' : ''}" data-settings-tab="users">Usuários</button>` : ''}
+    ${isAdminUser() ? `<button class="settings-tab ${tab === 'header' ? 'active' : ''}" data-settings-tab="header">Cabeçalho</button>` : ''}
     ${isAdminUser() ? `<button class="settings-tab ${tab === 'backup' ? 'active' : ''}" data-settings-tab="backup">Backup</button>` : ''}
   `;
 
@@ -5427,6 +5559,27 @@ function bindSettingsHandlers() {
     });
   });
 
+  // ── Aba Cabeçalho: salvar / restaurar (admin-only) ──
+  $("#cfg-save-btn")?.addEventListener("click", async () => {
+    const data = {
+      churchName: $("#cfg-churchName")?.value.trim() || SITE_CONFIG_DEFAULTS.churchName,
+      year:       $("#cfg-year")?.value.trim() || "",
+      yearScript: $("#cfg-yearScript")?.value.trim() || "",
+      yearShout:  $("#cfg-yearShout")?.value.trim() || "",
+      verseTitle: $("#cfg-verseTitle")?.value.trim() || "",
+      verseRef:   $("#cfg-verseRef")?.value.trim() || "",
+      leaderName: $("#cfg-leaderName")?.value.trim() || "",
+      viceName:   $("#cfg-viceName")?.value.trim() || "",
+    };
+    const ok = await saveSiteConfig(data);
+    if (ok) showToast("Cabeçalho atualizado", "success");
+  });
+  $("#cfg-reset-btn")?.addEventListener("click", async () => {
+    if (!confirm("Restaurar o cabeçalho para os valores padrão (ADVEC Sobradinho)?")) return;
+    const ok = await saveSiteConfig({ ...SITE_CONFIG_DEFAULTS });
+    if (ok) { showToast("Cabeçalho restaurado ao padrão", "success"); render(); }
+  });
+
   // ── Aba Backup: handlers (admin-only) ──
   $("#backup-export-btn")?.addEventListener("click", async () => {
     if (!isAdminUser()) { showToast("Acesso restrito a administradores", "error"); return; }
@@ -5485,13 +5638,13 @@ function bindSettingsHandlers() {
 // Todas as coleções entram no export (para registro completo).
 const BACKUP_COLLECTIONS = [
   "events", "overrides", "cancelled", "people", "locations",
-  "ministryLabels", "customMinistries", "monthlyNotices", "specialPeriods", "users"
+  "ministryLabels", "customMinistries", "monthlyNotices", "specialPeriods", "config", "users"
 ];
 
 // "users" NÃO é restaurado para evitar lockout do admin e overwrite de roles atuais.
 const BACKUP_RESTORABLE = [
   "events", "overrides", "cancelled", "people", "locations",
-  "ministryLabels", "customMinistries", "monthlyNotices", "specialPeriods"
+  "ministryLabels", "customMinistries", "monthlyNotices", "specialPeriods", "config"
 ];
 
 // Converte Firestore Timestamps (que vêm como objetos { seconds, nanoseconds })
@@ -5526,13 +5679,22 @@ async function exportBackup() {
       collections: {}
     };
     let total = 0;
+    const skipped = [];
     for (const col of BACKUP_COLLECTIONS) {
-      const snap = await getDocs(collection(fbDb, col));
-      data.collections[col] = {};
-      snap.forEach(d => {
-        data.collections[col][d.id] = serializeForBackup(d.data());
-        total++;
-      });
+      try {
+        const snap = await getDocs(collection(fbDb, col));
+        data.collections[col] = {};
+        snap.forEach(d => {
+          data.collections[col][d.id] = serializeForBackup(d.data());
+          total++;
+        });
+      } catch (colErr) {
+        // Não aborta o backup inteiro se uma coleção específica falhar
+        // (ex.: "config" antes das Security Rules serem publicadas).
+        console.warn(`[exportBackup] coleção "${col}" ignorada:`, colErr?.message || colErr);
+        data.collections[col] = {};
+        skipped.push(col);
+      }
     }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -5544,7 +5706,7 @@ async function exportBackup() {
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    showToast(`Backup baixado — ${total} registros em ${BACKUP_COLLECTIONS.length} coleções`, "success");
+    showToast(`Backup baixado — ${total} registros em ${BACKUP_COLLECTIONS.length - skipped.length} coleções${skipped.length ? ` (ignoradas: ${skipped.join(", ")})` : ""}`, "success");
   } catch (err) {
     console.error("[exportBackup]", err);
     showToast("Erro ao exportar: " + err.message, "error");
@@ -6637,11 +6799,11 @@ function buildWeeklyProgramHtml() {
     </div>
     <div class="title-wrap">
       <h1>Programação Semanal</h1>
-      <div class="subtitle">ADVEC Sobradinho · Agenda Oficial</div>
+      <div class="subtitle">${escapeHtml(getSiteConfig().churchName)} · Agenda Oficial</div>
     </div>
     <div class="period">
       <strong>${escapeHtml(periodLabel)}</strong>
-      ${firstDay.getFullYear()} · Ano da Oração
+      ${firstDay.getFullYear()} · ${escapeHtml(getSiteConfig().yearScript)} ${escapeHtml(getSiteConfig().yearShout)}
     </div>
   </div>
 
@@ -6657,7 +6819,7 @@ function buildWeeklyProgramHtml() {
   ${proximasSemanasHtml}
 
   <div class="footer">
-    Gerado em ${new Date().toLocaleString("pt-BR")} · ADVEC Sobradinho — Pr. Márcio Nascimento (Dirigente) · Dc. Willian Borges (Vice)
+    Gerado em ${new Date().toLocaleString("pt-BR")} · ${escapeHtml(getSiteConfig().churchName)} — ${escapeHtml(getSiteConfig().leaderName)} (Dirigente) · ${escapeHtml(getSiteConfig().viceName)} (Vice)
   </div>
 </body>
 </html>`;
@@ -6725,6 +6887,9 @@ const goToToday = () => { setTodayView(); render(); };
 // primeiro render, que só ocorre após o login). A navegação posterior atualiza
 // o state normalmente, então isto roda só uma vez.
 setTodayView();
+// Aplica o cabeçalho com os valores padrão já no carregamento (o listener do
+// Firestore sobrescreve com a config salva assim que o usuário aprovado entra).
+applyHeaderConfig();
 $("#today-btn").addEventListener("click", goToToday);
 $("#today-btn-mobile").addEventListener("click", goToToday);
 
