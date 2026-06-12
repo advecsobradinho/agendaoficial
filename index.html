@@ -1962,6 +1962,115 @@ main {
   letter-spacing: .3px;
   flex-shrink: 0;
 }
+
+/* ── Botão pequeno (lightbox, ações de flyer) ── */
+.btn-sm {
+  padding: 6px 10px;
+  font-size: 12.5px;
+  gap: 5px;
+}
+.btn-sm svg { width: 14px; height: 14px; }
+.btn-light.danger { color: var(--rose); }
+.btn-light.danger:hover:not(:disabled) { background: rgba(160,82,76,0.10); border-color: var(--rose); }
+
+/* ── Avatar / foto de pregador(a) na lista de cadastro ── */
+.person-photo-thumb {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid var(--gold);
+  background: var(--cream);
+}
+img.person-photo-thumb { cursor: pointer; transition: transform .15s; }
+img.person-photo-thumb:hover { transform: scale(1.06); }
+.person-photo-placeholder {
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy-deep);
+  font-weight: 700; font-size: 13px;
+  border-color: var(--line);
+}
+
+/* ── Flyer: prévia no modal de evento ── */
+.flyer-edit-row {
+  display: flex; gap: 12px; align-items: flex-start;
+}
+.flyer-thumb {
+  width: 96px; height: 96px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color .15s;
+}
+.flyer-thumb:hover { border-color: var(--gold); }
+.flyer-edit-actions {
+  display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start;
+}
+
+/* ── Flyer: miniatura no card de evento ── */
+.event-flyer {
+  margin-top: 10px;
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.event-flyer-img {
+  width: 64px; height: 64px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color .15s;
+}
+.event-flyer-img:hover { border-color: var(--gold); }
+.event-flyer-actions { display: flex; flex-direction: column; gap: 5px; }
+.event-flyer-actions button {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-family: inherit; font-size: 12px; font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+}
+.event-flyer-actions button:hover { background: var(--cream); color: var(--navy-deep); border-color: var(--gold); }
+.event-flyer-actions .icon-xs { width: 13px; height: 13px; }
+
+/* ── Lightbox de imagem (foto / flyer em tela cheia) ── */
+.img-lightbox-overlay { z-index: 60; align-items: center; }
+.img-lightbox {
+  background: var(--paper);
+  width: 100%; max-width: 720px;
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  display: flex; flex-direction: column;
+  max-height: 92vh; overflow: hidden;
+  border: 1px solid var(--line);
+  animation: slideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.img-lightbox-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.img-lightbox-title {
+  font-weight: 700; color: var(--ink); font-size: 15px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.img-lightbox-buttons { display: flex; gap: 8px; flex-shrink: 0; }
+.img-lightbox-body {
+  padding: 16px; overflow: auto;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--cream);
+}
+.img-lightbox-body img {
+  max-width: 100%; max-height: 74vh;
+  border-radius: 8px;
+  display: block;
+}
 </style>
 </head>
 <body>
@@ -2398,6 +2507,13 @@ function getRecurringEventsForDate(dateStr) {
   if (dow === 4) {
     events.push(template("qui_seminario_1900", "Seminário Teológico", "19:00", "DIVERSOS", ["preacher"]));
     events.push(template("qui_vitoriosas_2000", "Encontro de Crescimento das Vitoriosas", "20:00", "VITORIOSAS", ["preacher"]));
+    // Quinta imediatamente após a Santa Ceia da 3ª quarta → Santa Ceia Regional (BSB)
+    if (isThursdayAfterSantaCeia(date)) {
+      events.push(template(
+        "qui_sc_regional_2000", "Santa Ceia Regional", "20:00", "ADVEC_BSB",
+        [], { location: "Advec Brasília" }
+      ));
+    }
   }
 
   // Adiciona dateStr a cada slotId para diferenciar overrides por data
@@ -2417,6 +2533,16 @@ function isThirdWednesday(date) {
   if (date.getDay() !== 3) return false;
   const day = date.getDate();
   return day >= 15 && day <= 21;
+}
+
+// Quinta-feira imediatamente após a Santa Ceia da 3ª quarta-feira
+// (a quarta da véspera é a 3ª quarta do mês). Cai sempre entre os dias 16 e 22,
+// no mesmo mês — então não há virada de mês a tratar.
+function isThursdayAfterSantaCeia(date) {
+  if (date.getDay() !== 4) return false;
+  const prev = new Date(date);
+  prev.setDate(prev.getDate() - 1);
+  return isThirdWednesday(prev);
 }
 
 // Decide se um domingo recebe Santa Ceia (1º domingo do mês a partir de 01/05/2026)
@@ -2692,6 +2818,7 @@ function initFirestoreListeners() {
           name: data.name,
           isGuest: !!data.isGuest,
           isPinned: data.isPinned !== undefined ? !!data.isPinned : shouldAutoPin(data.name),
+          photo: data.photo || null,
           _key: d.id,
         };
       });
@@ -3055,6 +3182,15 @@ async function setPersonPinned(name, isPinned) {
   try { await updateDoc(doc(fbDb, "people", k), { isPinned: !!isPinned }); return true; }
   catch (err) { showToast("Erro: " + err.message, "error"); return false; }
 }
+// Define (ou remove, passando null) a foto de uma pessoa.
+async function setPersonPhoto(name, photoDataUrl) {
+  if (!canEdit()) { showToast("Sem permissão", "error"); return false; }
+  const k = masterKey(name);
+  try {
+    await updateDoc(doc(fbDb, "people", k), { photo: photoDataUrl || null });
+    return true;
+  } catch (err) { showToast("Erro ao salvar foto: " + err.message, "error"); return false; }
+}
 async function removePerson(name) {
   if (!canEdit()) return;
   const k = masterKey(name);
@@ -3079,7 +3215,8 @@ async function renamePerson(oldName, newName) {
   try {
     // Cria novo doc, deleta antigo
     await setDoc(doc(fbDb, "people", nk), {
-      name: nv, isGuest: !!oldPerson.isGuest, isPinned: !!oldPerson.isPinned, _key: nk
+      name: nv, isGuest: !!oldPerson.isGuest, isPinned: !!oldPerson.isPinned,
+      photo: oldPerson.photo || null, _key: nk
     });
     await deleteDoc(doc(fbDb, "people", ok));
     // Propaga em eventos manuais e overrides
@@ -4275,6 +4412,19 @@ function eventCardHtml(e, dateStr) {
         </div>
         ${renderEventDetails(e, isEmpty)}
         ${e.notes ? `<div class="event-notes">${escapeHtml(e.notes)}</div>` : ""}
+        ${e.flyer ? `
+          <div class="event-flyer">
+            <img class="event-flyer-img" src="${e.flyer}" alt="Flyer" data-flyer-card-view title="Ver flyer">
+            <div class="event-flyer-actions">
+              <button type="button" data-flyer-card-view title="Ver flyer">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                Ver flyer
+              </button>
+              <button type="button" data-flyer-card-download title="Baixar flyer">
+                <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              </button>
+            </div>
+          </div>` : ""}
       </div>
     </div>`;
 }
@@ -4339,6 +4489,28 @@ function bindEventCardHandlers(rootEl) {
       confirmingDelete = null;
       if (isRec) cancelRecurring(id);
       else deleteManualEvent(id);
+    });
+  });
+
+  // Flyer no card — visualizar (lightbox) e baixar. stopPropagation para não
+  // disparar o clique do card (que abriria a edição).
+  const flyerEventFromCard = (el) => {
+    const card = el.closest("[data-card-id]");
+    if (!card) return null;
+    return findEventByCard(card.dataset.cardId, card.dataset.cardIsRecurring === '1', card.dataset.cardDate);
+  };
+  rootEl.querySelectorAll("[data-flyer-card-view]").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const ev = flyerEventFromCard(el);
+      if (ev && ev.flyer) openImageLightbox(ev.flyer, ev.title || "Flyer", slugFilename(ev.title || "evento", "flyer"));
+    });
+  });
+  rootEl.querySelectorAll("[data-flyer-card-download]").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const ev = flyerEventFromCard(el);
+      if (ev && ev.flyer) downloadDataUrl(ev.flyer, slugFilename(ev.title || "evento", "flyer"));
     });
   });
 }
@@ -4855,11 +5027,19 @@ function personItemHtml(person) {
     : "";
   const pinBtnTitle = person.isPinned ? "Desafixar do topo" : "Fixar no topo";
   const pinIconColor = person.isPinned ? "var(--gold)" : "currentColor";
+  const hasPhoto = !!person.photo;
+  const avatar = hasPhoto
+    ? `<img class="person-photo-thumb" src="${person.photo}" alt="${escapeHtml(person.name)}" data-view-person-photo data-value="${escapeHtml(person.name)}" title="Ver foto">`
+    : `<div class="person-photo-thumb person-photo-placeholder" title="Sem foto">${escapeHtml(personInitials(person.name))}</div>`;
   return `
     <div class="settings-item">
+      ${avatar}
       ${pinBadge}
       <span class="settings-item-name">${escapeHtml(person.name)}${guestBadge}</span>
       <div class="settings-item-actions">
+        <button class="settings-icon-btn" data-photo-person data-value="${escapeHtml(person.name)}" title="${hasPhoto ? 'Trocar foto' : 'Adicionar foto'}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+        </button>
         <button class="settings-icon-btn ${person.isPinned ? 'pinned' : ''}" data-pin-person data-value="${escapeHtml(person.name)}" data-pinned="${person.isPinned ? '1' : '0'}" title="${pinBtnTitle}">
           <svg viewBox="0 0 24 24" fill="none" stroke="${pinIconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>
         </button>
@@ -5091,6 +5271,37 @@ function bindSettingsHandlers() {
       setPersonPinned(name, !currentlyPinned);
       showToast(currentlyPinned ? "Desafixado" : "Fixado no topo", "success");
       render();
+    });
+  });
+
+  // Foto da pessoa — adicionar/trocar
+  container.querySelectorAll("[data-photo-person]").forEach(el => {
+    el.addEventListener("click", async () => {
+      const name = el.dataset.value;
+      const url = await pickImageFile(512, 250 * 1024); // foto pequena e quadrada-ish
+      if (!url) return;
+      const ok = await setPersonPhoto(name, url);
+      if (ok) showToast("Foto salva", "success");
+    });
+  });
+
+  // Foto da pessoa — visualizar (clique no avatar) + baixar/remover no lightbox
+  container.querySelectorAll("[data-view-person-photo]").forEach(el => {
+    el.addEventListener("click", () => {
+      const name = el.dataset.value;
+      const person = state.people.find(p => masterKey(p.name) === masterKey(name));
+      if (!person || !person.photo) return;
+      const canRemove = canEdit();
+      openImageLightbox(
+        person.photo,
+        person.name,
+        slugFilename(person.name, "foto"),
+        canRemove ? async () => {
+          if (!confirm(`Remover a foto de "${person.name}"?`)) { render(); return; }
+          const ok = await setPersonPhoto(person.name, null);
+          if (ok) showToast("Foto removida", "success");
+        } : null
+      );
     });
   });
 
@@ -5452,6 +5663,169 @@ function buildPeopleOptions(currentValue) {
   return opts.join("");
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// IMAGENS — upload, visualização e download
+// As imagens (foto do pregador e flyer do evento) são guardadas como data URL
+// (base64) DENTRO do próprio documento do Firestore (people / events / overrides).
+// O Firestore limita 1 MB por documento, então TODA imagem é redimensionada e
+// comprimida no navegador antes de salvar. Não usa Firebase Storage — nenhuma
+// configuração extra no Console é necessária.
+// ════════════════════════════════════════════════════════════════════════════
+
+// Lê um File de imagem e devolve um data URL JPEG redimensionado (lado maior
+// ≤ maxDim) e comprimido para ficar abaixo de ~maxBytes (reduz a qualidade
+// iterativamente). base64 ocupa ~1,37x o tamanho em bytes.
+function fileToResizedDataUrl(file, maxDim = 1200, maxBytes = 700 * 1024) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type || !file.type.startsWith("image/")) {
+      reject(new Error("Selecione um arquivo de imagem")); return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.naturalWidth || img.width;
+        let height = img.naturalHeight || img.height;
+        if (width >= height && width > maxDim) {
+          height = Math.round(height * maxDim / width); width = maxDim;
+        } else if (height > width && height > maxDim) {
+          width = Math.round(width * maxDim / height); height = maxDim;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        // Fundo branco para imagens com transparência (PNG) não virarem preto no JPEG
+        ctx.fillStyle = "#FFFFFF"; ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+        let quality = 0.9;
+        let dataUrl = canvas.toDataURL("image/jpeg", quality);
+        while (dataUrl.length > maxBytes * 1.37 && quality > 0.4) {
+          quality -= 0.1;
+          dataUrl = canvas.toDataURL("image/jpeg", quality);
+        }
+        resolve(dataUrl);
+      };
+      img.onerror = () => reject(new Error("Não foi possível ler a imagem"));
+      img.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error("Erro ao abrir o arquivo"));
+    reader.readAsDataURL(file);
+  });
+}
+
+// Abre o seletor de arquivo, processa a imagem e devolve o data URL (ou null).
+function pickImageFile(maxDim, maxBytes) {
+  return new Promise((resolve) => {
+    const inp = document.createElement("input");
+    inp.type = "file";
+    inp.accept = "image/*";
+    inp.style.display = "none";
+    document.body.appendChild(inp);
+    inp.addEventListener("change", async () => {
+      const file = inp.files && inp.files[0];
+      inp.remove();
+      if (!file) { resolve(null); return; }
+      try {
+        showToast("Processando imagem…", "success");
+        const dataUrl = await fileToResizedDataUrl(file, maxDim, maxBytes);
+        resolve(dataUrl);
+      } catch (err) {
+        showToast("Erro na imagem: " + err.message, "error");
+        resolve(null);
+      }
+    }, { once: true });
+    inp.click();
+  });
+}
+
+// Baixa um data URL como arquivo.
+function downloadDataUrl(dataUrl, filename) {
+  const a = document.createElement("a");
+  a.href = dataUrl;
+  a.download = filename || "imagem.jpg";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+// Gera um nome de arquivo "limpo" a partir de um texto.
+function slugFilename(text, prefix) {
+  const base = String(text || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  return `${prefix || "img"}_${base || "sem_nome"}.jpg`;
+}
+
+// Lightbox para visualizar uma imagem em tela cheia, com botão de baixar e
+// (opcionalmente) remover. `onRemove` recebe uma função e, se fornecida, mostra
+// o botão "Remover".
+function openImageLightbox(dataUrl, title, filename, onRemove) {
+  let host = document.getElementById("image-lightbox-container");
+  if (!host) {
+    host = document.createElement("div");
+    host.id = "image-lightbox-container";
+    document.body.appendChild(host);
+  }
+  const close = () => { host.innerHTML = ""; };
+  host.innerHTML = `
+    <div class="overlay img-lightbox-overlay" data-close-lightbox>
+      <div class="img-lightbox" onclick="event.stopPropagation()">
+        <div class="img-lightbox-head">
+          <span class="img-lightbox-title">${escapeHtml(title || "Imagem")}</span>
+          <div class="img-lightbox-buttons">
+            <button class="btn btn-light btn-sm" data-download-lightbox>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Baixar
+            </button>
+            ${onRemove ? `<button class="btn btn-light btn-sm danger" data-remove-lightbox>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              Remover
+            </button>` : ""}
+            <button class="btn btn-secondary btn-sm" data-close-lightbox>Fechar</button>
+          </div>
+        </div>
+        <div class="img-lightbox-body">
+          <img src="${dataUrl}" alt="${escapeHtml(title || "Imagem")}">
+        </div>
+      </div>
+    </div>`;
+  host.querySelectorAll("[data-close-lightbox]").forEach(el =>
+    el.addEventListener("click", close));
+  host.querySelector("[data-download-lightbox]")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    downloadDataUrl(dataUrl, filename || "imagem.jpg");
+  });
+  host.querySelector("[data-remove-lightbox]")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    close();
+    if (typeof onRemove === "function") onRemove();
+  });
+}
+
+// Iniciais para o avatar placeholder de uma pessoa sem foto.
+function personInitials(name) {
+  return String(name || "")
+    .split(" ").map(s => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "?";
+}
+
+// Lê os valores atuais dos campos do modal de evento para dentro de
+// state.editingEvent. Usado antes de re-renderizar o modal (ex.: ao adicionar/
+// trocar/remover o flyer) para não perder o que já foi digitado.
+function syncEventFormToState() {
+  const e = state.editingEvent; if (!e) return;
+  const t = $("#ev-title"); if (t) e.title = t.value;
+  const d = $("#ev-date"); if (d) e.date = d.value;
+  const tm = $("#ev-time"); if (tm) e.time = tm.value;
+  const mn = $("#ev-ministry"); if (mn) e.ministry = mn.value;
+  const pr = $("#ev-preacher"); if (pr) e.preacher = pr.value;
+  const pf = $("#ev-professor"); if (pf) e.professor = pf.value;
+  const ls = $("#ev-lesson"); if (ls) e.lesson = ls.value;
+  const lc = $("#ev-location"); if (lc) e.location = lc.value;
+  const nt = $("#ev-notes"); if (nt) e.notes = nt.value;
+  const sw = $("#ev-show-in-weekly"); if (sw) e.showInWeeklyProgram = sw.checked;
+  const ft = $("#ev-featured"); if (ft) e.featuredInWeekly = ft.checked;
+}
+
 function renderEventModal() {
   if (!state.editingEvent) {
     $("#event-modal-container").innerHTML = "";
@@ -5472,6 +5846,7 @@ function renderEventModal() {
     lesson: e.lesson || "",
     location: e.location || "",
     notes: e.notes || "",
+    flyer: e.flyer || "",
   };
 
   const fields = isRecurring ? (e.editableFields || []) : ["preacher", "professor", "lesson", "location"];
@@ -5604,6 +5979,26 @@ function renderEventModal() {
             <textarea id="ev-notes" class="textarea" placeholder="Detalhes, observações, lembretes...">${escapeHtml(formData.notes)}</textarea>
           </div>
           <div class="field" style="border-top: 1px solid var(--line); padding-top: 14px; margin-top: 4px;">
+            <label class="field-label">Flyer do evento (imagem)</label>
+            ${formData.flyer ? `
+              <div class="flyer-edit-row">
+                <img class="flyer-thumb" src="${formData.flyer}" alt="Flyer" data-flyer-view title="Ver flyer">
+                <div class="flyer-edit-actions">
+                  <button type="button" class="btn btn-light btn-sm" data-flyer-view>👁 Ver</button>
+                  <button type="button" class="btn btn-light btn-sm" data-flyer-download>⬇ Baixar</button>
+                  <button type="button" class="btn btn-light btn-sm" data-flyer-pick>🔄 Trocar</button>
+                  <button type="button" class="btn btn-light btn-sm danger" data-flyer-remove>✕ Remover</button>
+                </div>
+              </div>
+            ` : `
+              <button type="button" class="btn btn-light" data-flyer-pick style="width:100%; justify-content:center;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                Adicionar flyer
+              </button>
+            `}
+            <div class="field-hint" style="margin-top:6px; color: var(--muted); font-size: 12px;">A imagem fica guardada junto ao evento e é reduzida automaticamente para carregar rápido.</div>
+          </div>
+          <div class="field" style="border-top: 1px solid var(--line); padding-top: 14px; margin-top: 4px;">
             <label class="field-checkbox" style="cursor: pointer; display: flex; align-items: flex-start; gap: 10px;">
               <input id="ev-show-in-weekly" type="checkbox" ${e.showInWeeklyProgram !== false ? "checked" : ""}>
               <span><strong>Mostrar na Programação Semanal</strong><br>
@@ -5649,6 +6044,8 @@ function renderEventModal() {
     });
     // Esconde os botões "+" de cadastro inline (não fazem sentido pra viewer)
     container?.querySelectorAll("[data-add-person-inline]").forEach(el => el.style.display = "none");
+    // Esconde os botões de edição do flyer (manter apenas ver/baixar)
+    container?.querySelectorAll("[data-flyer-pick], [data-flyer-remove]").forEach(el => el.style.display = "none");
   }
 
   // ministry preview (apenas para manual)
@@ -5709,8 +6106,39 @@ function renderEventModal() {
     });
   });
 
+  // ── Flyer do evento ──
+  const flyerName = () => slugFilename(state.editingEvent?.title || "evento", "flyer");
+  $("#event-modal-container").querySelectorAll("[data-flyer-pick]").forEach(el => {
+    el.addEventListener("click", async () => {
+      const url = await pickImageFile(1400, 750 * 1024);
+      if (!url) return;
+      syncEventFormToState();           // preserva o que já foi digitado
+      state.editingEvent.flyer = url;
+      renderEventModal();               // re-renderiza mostrando a prévia
+    });
+  });
+  $("#event-modal-container").querySelectorAll("[data-flyer-view]").forEach(el => {
+    el.addEventListener("click", () => {
+      if (state.editingEvent?.flyer) {
+        openImageLightbox(state.editingEvent.flyer, state.editingEvent.title || "Flyer", flyerName());
+      }
+    });
+  });
+  $("#event-modal-container").querySelectorAll("[data-flyer-download]").forEach(el => {
+    el.addEventListener("click", () => {
+      if (state.editingEvent?.flyer) downloadDataUrl(state.editingEvent.flyer, flyerName());
+    });
+  });
+  $("#event-modal-container").querySelectorAll("[data-flyer-remove]").forEach(el => {
+    el.addEventListener("click", () => {
+      syncEventFormToState();
+      state.editingEvent.flyer = null;
+      renderEventModal();
+    });
+  });
+
   // Save
-  $("#save-event").addEventListener("click", () => {
+  $("#save-event")?.addEventListener("click", () => {
     const editing = state.editingEvent;
     const data = {
       preacher: $("#ev-preacher")?.value.trim() || "",
@@ -5719,6 +6147,7 @@ function renderEventModal() {
       notes: $("#ev-notes")?.value.trim() || "",
       featuredInWeekly: $("#ev-featured")?.checked || false,
       showInWeeklyProgram: $("#ev-show-in-weekly")?.checked !== false,  // default true
+      flyer: editing.flyer || null,   // imagem do flyer (data URL) ou null
     };
     // location só existe no form quando é manual
     const locInput = $("#ev-location");
@@ -6275,9 +6704,11 @@ $("#next-month").addEventListener("click", () => {
   }
   render();
 });
-const goToToday = () => {
+// Define a visão (mês + semana) para HOJE. Usado tanto na inicialização da
+// aplicação (abrir sempre no mês/semana atual) quanto no botão "Hoje".
+// Se hoje for antes de maio/2026 (agenda inativa), cai para maio/2026.
+function setTodayView() {
   const t = new Date();
-  // se hoje for antes de maio/2026, leva para maio/2026
   if (isMonthInactive(t.getFullYear(), t.getMonth())) {
     state.viewYear = 2026;
     state.viewMonth = 4;
@@ -6287,8 +6718,13 @@ const goToToday = () => {
     state.viewMonth = t.getMonth();
     state.weekStart = formatDate(startOfWeek(t));
   }
-  render();
-};
+}
+const goToToday = () => { setTodayView(); render(); };
+
+// Inicializa a visão no mês e na semana atuais já no carregamento (antes do
+// primeiro render, que só ocorre após o login). A navegação posterior atualiza
+// o state normalmente, então isto roda só uma vez.
+setTodayView();
 $("#today-btn").addEventListener("click", goToToday);
 $("#today-btn-mobile").addEventListener("click", goToToday);
 
