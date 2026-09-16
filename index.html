@@ -2514,6 +2514,94 @@ async function saveSiteConfig(data) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// CULTOS FIXOS — mudança de DIA DA SEMANA (regras com data de vigência)
+// ════════════════════════════════════════════════════════════════════════════
+// Alguns cultos semanais podem trocar de dia. Cada regra diz:
+//   "a partir de <from>, o template <templateId> passa a ocorrer na <weekday>"
+//   (0=domingo … 6=sábado) — ou "deixa de acontecer" quando weekday = null.
+// As regras ficam em config/recurring no Firestore (aba "Cultos Fixos", admin) e
+// caem nos padrões abaixo enquanto não houver nada salvo.
+//
+// ⚠️ NADA é apagado quando um culto muda de dia: a regra só vale de <from> em
+// diante, então todo o histórico (escalas, pregadores, cancelamentos) continua
+// exatamente como está. Desfazer a regra devolve tudo ao estado anterior.
+
+// Cultos semanais que podem ser movidos. Os que dependem da forma do mês
+// (Santa Ceia da 3ª quarta, Santa Ceia Regional, cultos de domingo) ficam fixos.
+const MOVABLE_RECURRING = [
+  { templateId: "seg_vit_2000",        label: "Culto da Vitória",                      nativeDow: 1 },
+  { templateId: "qua_palavra_2000",    label: "Culto da Palavra",                      nativeDow: 3 },
+  { templateId: "qui_vitoriosas_2000", label: "Encontro de Crescimento das Vitoriosas", nativeDow: 4 },
+];
+
+// Regras padrão — usadas enquanto config/recurring não existir no Firestore.
+// 06/10/2026: Palavra → terça, Vitoriosas → quarta, Vitória → quinta.
+const RECURRING_RULES_DEFAULTS = [
+  { id: "mv20261006palavra",    templateId: "qua_palavra_2000",    weekday: 2, from: "2026-10-06" },
+  { id: "mv20261006vitoriosas", templateId: "qui_vitoriosas_2000", weekday: 3, from: "2026-10-06" },
+  { id: "mv20261006vitoria",    templateId: "seg_vit_2000",        weekday: 4, from: "2026-10-06" },
+];
+
+// Regras em vigor: o que estiver salvo no Firestore ou, na falta, os padrões.
+function getRecurringRules() {
+  return Array.isArray(state.recurringRules) ? state.recurringRules : RECURRING_RULES_DEFAULTS;
+}
+function usingDefaultRecurringRules() { return !Array.isArray(state.recurringRules); }
+
+// Regra que vale para um template numa data (a mais recente com from <= data)
+function getRecurringRuleFor(templateId, dateStr) {
+  let best = null;
+  for (const r of getRecurringRules()) {
+    if (!r || r.templateId !== templateId || !r.from) continue;
+    if (r.from > dateStr) continue;
+    if (!best || r.from > best.from) best = r;
+  }
+  return best;
+}
+
+// Dia da semana em vigor (0-6); -1 = o culto foi encerrado naquela data
+function effectiveDowFor(templateId, nativeDow, dateStr) {
+  const r = getRecurringRuleFor(templateId, dateStr);
+  if (!r) return nativeDow;
+  return (r.weekday === null || r.weekday === undefined) ? -1 : Number(r.weekday);
+}
+
+// O template acontece nesta data? (dow = dia da semana da data)
+function occursOnDate(templateId, nativeDow, dateStr, dow) {
+  return effectiveDowFor(templateId, nativeDow, dateStr) === dow;
+}
+
+// Grava a lista completa de regras (admin-only). Merge no doc config/recurring.
+async function saveRecurringRules(rules) {
+  if (!isAdminUser()) { showToast("Apenas o administrador pode alterar os cultos fixos", "error"); return false; }
+  try {
+    await setDoc(doc(fbDb, "config", "recurring"), {
+      rules,
+      updatedAt: serverTimestamp(),
+      updatedBy: state.auth.user?.uid || null,
+    }, { merge: true });
+    return true;
+  } catch (err) {
+    showToast("Erro ao salvar mudança: " + err.message, "error");
+    return false;
+  }
+}
+
+// Data (YYYY-MM-DD) em formato brasileiro, para textos da interface
+function brDate(ds) {
+  if (!ds || ds.length < 10) return ds || "";
+  return ds.slice(8, 10) + "/" + ds.slice(5, 7) + "/" + ds.slice(0, 4);
+}
+
+// A data do dia da semana `dow` dentro da semana que começa na segunda `monday`
+function dateOfDowInWeek(monday, dow) {
+  const off = dow === 0 ? 6 : dow - 1;   // semana segunda→domingo
+  const d = new Date(monday);
+  d.setDate(d.getDate() + off);
+  return d;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // TEMPLATES DE EVENTOS RECORRENTES
 // ════════════════════════════════════════════════════════════════════════════
 // Campos editáveis disponíveis:
@@ -2558,12 +2646,7 @@ function getRecurringEventsForDate(dateStr) {
     }
   }
 
-  // ─── SEGUNDA ───
-  if (dow === 1) {
-    events.push(template("seg_vit_2000", "Culto da Vitória", "20:00", "CULTOS", ["preacher"]));
-  }
-
-  // ─── QUARTA ───
+  // ─── QUARTA: Santa Ceia da 3ª quarta e EDP antigo (presos à quarta-feira) ───
   if (dow === 3) {
     if (isThirdWednesday(date)) {
       // 3ª quarta do mês = Santa Ceia (local Advec Sobradinho, pregador Pr. Márcio Nascimento — ambos editáveis)
@@ -2574,21 +2657,35 @@ function getRecurringEventsForDate(dateStr) {
       ));
     } else if (!isNew) {
       events.push(template("qua_edp_2000", "EDP", "20:00", "CULTOS", ["professor", "lesson"]));
-    } else {
-      events.push(template("qua_palavra_2000", "Culto da Palavra", "20:00", "CULTOS", ["preacher"]));
     }
   }
 
-  // ─── QUINTA ───
-  if (dow === 4) {
+  // ─── CULTOS SEMANAIS QUE PODEM MUDAR DE DIA (ver MOVABLE_RECURRING) ───
+  // Dia original: Vitória=segunda, Palavra=quarta, Vitoriosas=quinta.
+  // A partir de 06/10/2026 (regra padrão): Palavra=terça, Vitoriosas=quarta, Vitória=quinta.
+
+  // Culto da Vitória (original: segunda)
+  if (occursOnDate("seg_vit_2000", 1, dateStr, dow)) {
+    events.push(template("seg_vit_2000", "Culto da Vitória", "20:00", "CULTOS", ["preacher"]));
+  }
+
+  // Culto da Palavra (original: quarta, só na estrutura nova).
+  // Na quarta da Santa Ceia (3ª quarta) o Culto da Palavra não acontece.
+  if (isNew && occursOnDate("qua_palavra_2000", 3, dateStr, dow) && !(dow === 3 && isThirdWednesday(date))) {
+    events.push(template("qua_palavra_2000", "Culto da Palavra", "20:00", "CULTOS", ["preacher"]));
+  }
+
+  // Encontro de Crescimento das Vitoriosas (original: quinta)
+  if (occursOnDate("qui_vitoriosas_2000", 4, dateStr, dow)) {
     events.push(template("qui_vitoriosas_2000", "Encontro de Crescimento das Vitoriosas", "20:00", "VITORIOSAS", ["preacher"]));
-    // Quinta imediatamente após a Santa Ceia da 3ª quarta → Santa Ceia Regional (BSB)
-    if (isThursdayAfterSantaCeia(date)) {
-      events.push(template(
-        "qui_sc_regional_2000", "Santa Ceia Regional", "20:00", "ADVEC_BSB",
-        ["preacher"], { location: "Advec Brasília", preacher: "Pr. Cesar Carreira" }
-      ));
-    }
+  }
+
+  // ─── QUINTA após a Santa Ceia da 3ª quarta → Santa Ceia Regional (BSB) ───
+  if (dow === 4 && isThursdayAfterSantaCeia(date)) {
+    events.push(template(
+      "qui_sc_regional_2000", "Santa Ceia Regional", "20:00", "ADVEC_BSB",
+      ["preacher"], { location: "Advec Brasília", preacher: "Pr. Cesar Carreira" }
+    ));
   }
 
   // Adiciona dateStr a cada slotId para diferenciar overrides por data
@@ -2672,10 +2769,11 @@ const state = {
   monthlyNotices: {},        // { "YYYY-MM": { biblicalReading, prayerMotives, monthVerse, verseReference } }
   specialPeriods: [],        // [{ id, name, startDate, endDate, bgColor, textColor }]
   siteConfig: {},            // identidade do cabeçalho (config/site no Firestore) — ver SITE_CONFIG_DEFAULTS
+  recurringRules: null,      // regras de dia dos cultos fixos (config/recurring); null = usar RECURRING_RULES_DEFAULTS
 
   // ── Modal de configurações ──
   showSettings: false,
-  settingsTab: "people",      // "people" | "locations" | "ministries" | "notices" | "users" | "header" | "backup" | "periods"
+  settingsTab: "people",      // "people" | "locations" | "ministries" | "notices" | "users" | "header" | "recurring" | "backup" | "periods"
 
   // ── Autenticação ──
   auth: {
@@ -2979,6 +3077,22 @@ function initFirestoreListeners() {
       // Falha graciosa: o cabeçalho usa os valores padrão. Sem toast para não
       // alarmar caso as Security Rules de "config" ainda não tenham sido publicadas.
       console.warn("Listener config/site indisponível (usando cabeçalho padrão):", err?.message || err);
+    })
+  );
+
+  // Cultos fixos — regras de mudança de dia da semana (config/recurring)
+  firestoreUnsubscribers.push(
+    onSnapshot(doc(fbDb, "config", "recurring"), (snap) => {
+      const data = snap.exists() ? snap.data() : null;
+      state.recurringRules = (data && Array.isArray(data.rules))
+        ? data.rules.map((r, i) => ({ ...r, id: r.id || ("r" + i) }))
+        : null;   // null = ainda não salvo → usa RECURRING_RULES_DEFAULTS
+      render();
+      recomputeSearchMatches();
+    }, (err) => {
+      // Falha graciosa: mantém as regras padrão do código, sem alarmar o usuário
+      // (ex.: Security Rules de "config" ainda não publicadas).
+      console.warn("Listener config/recurring indisponível (usando regras padrão):", err?.message || err);
     })
   );
 
@@ -3785,6 +3899,49 @@ async function applyRecurringToFuture(editing, fields) {
     showToast("Erro ao replicar: " + err.message, "error");
   }
 }
+// 🔑 ADMIN: ao mudar um culto de dia, copia o que já estava escalado (pregador,
+// lição, local, observações, flyer…) das ocorrências futuras do dia ANTIGO para
+// as datas do dia NOVO, dentro da mesma semana.
+// É aditivo: nada é apagado no dia antigo e nada é sobrescrito no dia novo —
+// se a data nova já tiver informação salva, ela é preservada.
+async function transferRecurringSchedule(templateId, oldDow, newDow, fromStr) {
+  if (!isAdminUser()) return 0;
+  const COPY_FIELDS = ["title", "time", "preacher", "professor", "lesson",
+                       "location", "notes", "flyer", "featuredInWeekly", "showInWeeklyProgram"];
+  const start = parseDate(fromStr);
+  const end = new Date(start.getFullYear() + 1, 11, 31);   // até 31/dez do ano seguinte
+  const ops = [];
+  const cursor = startOfWeek(start);
+  while (cursor <= end) {
+    const oldDate = formatDate(dateOfDowInWeek(cursor, oldDow));
+    const newDate = formatDate(dateOfDowInWeek(cursor, newDow));
+    const src = state.recurringOverrides[`${templateId}_${oldDate}`];
+    // Só interessa o que já não vai mais acontecer (dia antigo, dentro da vigência)
+    // e desde que o dia novo ainda não tenha informação salva.
+    if (src && oldDate >= fromStr && newDate >= fromStr
+        && !state.recurringOverrides[`${templateId}_${newDate}`]) {
+      const patch = {};
+      COPY_FIELDS.forEach(k => { if (src[k] !== undefined) patch[k] = src[k]; });
+      if (Object.keys(patch).length > 0) {
+        ops.push(setDoc(doc(fbDb, "overrides", `${templateId}_${newDate}`), {
+          ...patch,
+          updatedAt: serverTimestamp(),
+          updatedBy: state.auth.user?.uid || null,
+        }, { merge: true }));
+      }
+    }
+    cursor.setDate(cursor.getDate() + 7);
+  }
+  if (ops.length === 0) return 0;
+  try {
+    await Promise.all(ops);
+    return ops.length;
+  } catch (err) {
+    showToast("Erro ao copiar escalas: " + err.message, "error");
+    return 0;
+  }
+}
+
 async function cancelRecurring(slotId) {
   if (!canEdit()) { showToast("Sem permissão", "error"); return; }
   try {
@@ -5026,6 +5183,129 @@ function renderSettingsModal() {
         </button>
       </div>
     `;
+  } else if (tab === "recurring" && isAdminUser()) {
+    const hojeStr = formatDate(new Date());
+    const rules = getRecurringRules();
+
+    // Situação de cada culto que pode mudar de dia
+    const statusItems = MOVABLE_RECURRING.map(m => {
+      const eff = effectiveDowFor(m.templateId, m.nativeDow, hojeStr);
+      const futuras = rules
+        .filter(r => r.templateId === m.templateId && r.from > hojeStr)
+        .sort((a, b) => String(a.from).localeCompare(String(b.from)))
+        .map(r => {
+          const txt = (r.weekday === null || r.weekday === undefined)
+            ? "<strong>deixa de acontecer</strong>"
+            : `passa a ser <strong>toda ${DAY_NAMES_MED[Number(r.weekday)].toLowerCase()}</strong>`;
+          return `<div class="settings-hint" style="margin: 2px 0 0;">→ a partir de ${brDate(r.from)}, ${txt}</div>`;
+        }).join("");
+      const hoje = eff < 0
+        ? "<strong>não acontece mais</strong>"
+        : `toda <strong>${DAY_NAMES_MED[eff].toLowerCase()}</strong>`;
+      return `
+        <div class="settings-item" style="align-items: flex-start;">
+          <div style="flex: 1; min-width: 0;">
+            <span class="settings-item-name">${escapeHtml(m.label)}</span>
+            <div class="settings-hint" style="margin: 2px 0 0;">Hoje: ${hoje} <em style="color: var(--muted);">· dia original: ${DAY_NAMES_MED[m.nativeDow].toLowerCase()}</em></div>
+            ${futuras}
+          </div>
+        </div>`;
+    }).join("");
+
+    // Lista de mudanças cadastradas (com botão de desfazer)
+    const rulesList = rules.length === 0
+      ? `<div class="settings-empty">Nenhuma mudança cadastrada — cada culto segue o dia original.</div>`
+      : [...rules]
+          .sort((a, b) => String(a.from).localeCompare(String(b.from)))
+          .map(r => {
+            const m = MOVABLE_RECURRING.find(x => x.templateId === r.templateId);
+            const label = m ? m.label : r.templateId;
+            const desc = (r.weekday === null || r.weekday === undefined)
+              ? "<strong>encerrado</strong>"
+              : `passa a ser <strong>toda ${DAY_NAMES_MED[Number(r.weekday)].toLowerCase()}</strong>`;
+            const futura = String(r.from) > hojeStr;
+            return `
+              <div class="settings-item">
+                <span class="settings-item-name">
+                  ${escapeHtml(label)} — ${desc}
+                  <em style="color: var(--muted); font-size: 12px;">· a partir de ${brDate(r.from)}${futura ? " (ainda não começou)" : ""}</em>
+                </span>
+                <div class="settings-item-actions">
+                  <button class="settings-icon-btn danger" data-delete-rrule="${escapeHtml(String(r.id || ""))}" title="Desfazer esta mudança">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </button>
+                </div>
+              </div>`;
+          }).join("");
+
+    const cultoOptions = MOVABLE_RECURRING
+      .map(m => `<option value="${m.templateId}">${escapeHtml(m.label)}</option>`).join("");
+    const dowOptions = [1, 2, 3, 4, 5, 6, 0]
+      .map(d => `<option value="${d}">Toda ${DAY_NAMES_MED[d].toLowerCase()}</option>`).join("");
+
+    bodyHtml = `
+      <p class="settings-hint">
+        Muda o <strong>dia da semana</strong> de um culto fixo de uma vez só, a partir da data que você escolher — sem precisar abrir dia por dia.
+        Também dá para <strong>encerrar</strong> um culto fixo (ele deixa de aparecer da data em diante). Disponível apenas para administradores.
+      </p>
+
+      <div style="margin: 12px 0 18px; padding: 12px 14px; border: 1px solid var(--gold); border-radius: 12px; background: var(--paper);">
+        <p class="settings-hint" style="margin: 0;">
+          🛡️ <strong>Nada é apagado.</strong> A mudança vale só da data escolhida em diante: todas as semanas anteriores continuam
+          exatamente como estão (pregadores, observações, cancelamentos). Qualquer mudança pode ser <strong>desfeita</strong> na lista abaixo,
+          e tudo volta como era.
+        </p>
+      </div>
+
+      <h4 style="margin: 0 0 8px; font-family: 'Fraunces', serif; color: var(--navy-deep);">Como está hoje</h4>
+      <div class="settings-list">${statusItems}</div>
+      ${usingDefaultRecurringRules() ? `<p class="settings-hint" style="margin-top: 6px;"><em>As mudanças abaixo ainda são as que vieram configuradas no sistema. Ao salvar qualquer alteração aqui, elas passam a ficar guardadas no banco.</em></p>` : ``}
+
+      <h4 style="margin: 20px 0 8px; font-family: 'Fraunces', serif; color: var(--navy-deep);">Nova mudança</h4>
+      <div class="header-config-grid">
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label" for="rr-template">Culto fixo</label>
+            <select id="rr-template" class="select">${cultoOptions}</select>
+          </div>
+          <div class="field">
+            <label class="field-label" for="rr-action">O que fazer</label>
+            <select id="rr-action" class="select">
+              <option value="move">Passar para outro dia da semana</option>
+              <option value="end">Encerrar (não acontece mais)</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label" for="rr-weekday">Novo dia da semana</label>
+            <select id="rr-weekday" class="select">${dowOptions}</select>
+          </div>
+          <div class="field">
+            <label class="field-label" for="rr-from">A partir de (inclusive)</label>
+            <input id="rr-from" class="input" type="date" value="${hojeStr}">
+          </div>
+        </div>
+        <label class="field-checkbox" style="align-items: flex-start; margin-top: 2px;">
+          <input id="rr-transfer" type="checkbox" checked>
+          <span>Levar junto o que já está escalado<br>
+            <span style="font-size: 12px; color: var(--muted);">Copia pregador(a), lição, local, observações e flyer das próximas ocorrências do dia antigo para as datas do dia novo. Não apaga nem sobrescreve nada.</span>
+          </span>
+        </label>
+      </div>
+      <div class="settings-add-row" style="justify-content: flex-end;">
+        <button id="rr-apply-btn" class="btn btn-primary">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          Aplicar mudança
+        </button>
+      </div>
+
+      <h4 style="margin: 20px 0 8px; font-family: 'Fraunces', serif; color: var(--navy-deep);">Mudanças cadastradas</h4>
+      <div class="settings-list">${rulesList}</div>
+      <p class="settings-hint" style="margin-top: 6px;">
+        Desfazer uma mudança (🗑) faz o culto voltar a seguir a regra anterior — nenhuma escala é perdida no caminho.
+      </p>
+    `;
   } else if (tab === "backup") {
     bodyHtml = `
       <p class="settings-hint">
@@ -5086,6 +5366,7 @@ function renderSettingsModal() {
     <button class="settings-tab ${tab === 'notices' ? 'active' : ''}" data-settings-tab="notices">Avisos do Mês</button>
     ${isAdminUser() ? `<button class="settings-tab ${tab === 'users' ? 'active' : ''}" data-settings-tab="users">Usuários</button>` : ''}
     ${isAdminUser() ? `<button class="settings-tab ${tab === 'header' ? 'active' : ''}" data-settings-tab="header">Cabeçalho</button>` : ''}
+    ${isAdminUser() ? `<button class="settings-tab ${tab === 'recurring' ? 'active' : ''}" data-settings-tab="recurring">Cultos Fixos</button>` : ''}
     ${isAdminUser() ? `<button class="settings-tab ${tab === 'backup' ? 'active' : ''}" data-settings-tab="backup">Backup</button>` : ''}
   `;
 
@@ -5587,6 +5868,84 @@ function bindSettingsHandlers() {
     };
     const ok = await saveSiteConfig(data);
     if (ok) showToast("Cabeçalho atualizado", "success");
+  });
+
+  // ── Aba Cultos Fixos: aplicar / desfazer mudança de dia (admin-only) ──
+  $("#rr-apply-btn")?.addEventListener("click", async () => {
+    if (!isAdminUser()) { showToast("Acesso restrito a administradores", "error"); return; }
+    const templateId = $("#rr-template")?.value;
+    const action     = $("#rr-action")?.value || "move";
+    const from       = $("#rr-from")?.value || "";
+    const transfer   = !!$("#rr-transfer")?.checked;
+    const weekday    = action === "end" ? null : Number($("#rr-weekday")?.value);
+
+    const m = MOVABLE_RECURRING.find(x => x.templateId === templateId);
+    if (!m) { showToast("Selecione um culto", "error"); return; }
+    if (!from || from.length < 10) { showToast("Informe a data de início", "error"); return; }
+
+    const hojeStr = formatDate(new Date());
+    if (from < hojeStr && !confirm(
+      `A data ${brDate(from)} já passou.\n\n` +
+      "A mudança também vai valer para as semanas entre essa data e hoje — os eventos daqueles dias deixam de aparecer no dia antigo.\n" +
+      "Nada é apagado do banco e dá pra desfazer, mas o normal é escolher uma data de hoje em diante.\n\nContinuar mesmo assim?"
+    )) return;
+
+    const oldDow = effectiveDowFor(templateId, m.nativeDow, from);
+    if (action === "move" && weekday === oldDow) {
+      showToast("Esse culto já acontece nesse dia da semana", "error"); return;
+    }
+
+    const msg = action === "end"
+      ? `Encerrar "${m.label}" a partir de ${brDate(from)}?\n\nAs ocorrências anteriores continuam intactas e a mudança pode ser desfeita.`
+      : `"${m.label}" passa a ser toda ${DAY_NAMES_MED[weekday].toLowerCase()}, a partir de ${brDate(from)}?\n\n` +
+        `Até ${brDate(from)} tudo continua como está${oldDow >= 0 ? ` (${DAY_NAMES_MED[oldDow].toLowerCase()})` : ""}. A mudança pode ser desfeita depois.`;
+    if (!confirm(msg)) return;
+
+    const btn = $("#rr-apply-btn");
+    const orig = btn ? btn.innerHTML : "";
+    if (btn) { btn.disabled = true; btn.innerHTML = "Aplicando…"; }
+    try {
+      const novaRegra = {
+        id: "r" + Date.now().toString(36),
+        templateId, weekday, from,
+      };
+      const ok = await saveRecurringRules([...getRecurringRules(), novaRegra]);
+      if (!ok) return;
+      showToast(action === "end" ? "Culto encerrado a partir da data" : "Culto movido de dia", "success");
+
+      if (transfer && action === "move" && oldDow >= 0) {
+        const n = await transferRecurringSchedule(templateId, oldDow, weekday, from);
+        if (n > 0) showToast(`${n} escala(s) copiada(s) para o novo dia`, "success");
+      }
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+    }
+  });
+
+  // Mostra/esconde o seletor de dia conforme a ação escolhida
+  $("#rr-action")?.addEventListener("change", () => {
+    const isEnd = $("#rr-action")?.value === "end";
+    const sel = $("#rr-weekday");
+    if (sel) { sel.disabled = isEnd; sel.style.opacity = isEnd ? "0.45" : "1"; }
+    const cb = $("#rr-transfer");
+    if (cb) { cb.disabled = isEnd; cb.checked = isEnd ? false : cb.checked; }
+  });
+
+  container.querySelectorAll("[data-delete-rrule]").forEach(el => {
+    el.addEventListener("click", async () => {
+      if (!isAdminUser()) { showToast("Acesso restrito a administradores", "error"); return; }
+      const id = el.dataset.deleteRrule;
+      const rules = getRecurringRules();
+      const r = rules.find(x => String(x.id) === String(id));
+      if (!r) return;
+      const m = MOVABLE_RECURRING.find(x => x.templateId === r.templateId);
+      if (!confirm(
+        `Desfazer a mudança de "${m ? m.label : r.templateId}" (a partir de ${brDate(r.from)})?\n\n` +
+        "O culto volta a seguir a regra anterior. Nenhuma escala é apagada."
+      )) return;
+      const ok = await saveRecurringRules(rules.filter(x => String(x.id) !== String(id)));
+      if (ok) showToast("Mudança desfeita", "success");
+    });
   });
 
   // ── Aba Backup: handlers (admin-only) ──
