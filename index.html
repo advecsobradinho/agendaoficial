@@ -1086,6 +1086,16 @@ main {
     z-index: 1;
   }
 }
+/* Modal GRANDE (Configurações) — aproveita melhor a tela no computador.
+   No celular continua igual aos outros modais (largura total, colado embaixo). */
+.modal-lg { width: 95vw; max-width: 960px; }
+@media (min-width: 1024px) {
+  .modal-lg { width: 92vw; max-width: 1180px; max-height: 88vh; }
+  .modal-lg .modal-body { padding: 22px 28px; }
+}
+@media (min-width: 1440px) {
+  .modal-lg { width: 88vw; max-width: 1360px; max-height: 90vh; }
+}
 .modal-header {
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: 12px; padding: 22px 24px 18px;
@@ -5372,7 +5382,7 @@ function renderSettingsModal() {
 
   container.innerHTML = `
     <div class="overlay" data-close-settings>
-      <div class="modal" onclick="event.stopPropagation()" style="max-width: 960px; width: 95vw;">
+      <div class="modal modal-lg" onclick="event.stopPropagation()">
         <div class="modal-header">
           <div>
             <div class="modal-eyebrow">CONFIGURAÇÕES</div>
