@@ -2539,9 +2539,11 @@ async function saveSiteConfig(data) {
 // Cultos semanais que podem ser movidos. Os que dependem da forma do mês
 // (Santa Ceia da 3ª quarta, Santa Ceia Regional, cultos de domingo) ficam fixos.
 const MOVABLE_RECURRING = [
-  { templateId: "seg_vit_2000",        label: "Culto da Vitória",                      nativeDow: 1 },
-  { templateId: "qua_palavra_2000",    label: "Culto da Palavra",                      nativeDow: 3 },
-  { templateId: "qui_vitoriosas_2000", label: "Encontro de Crescimento das Vitoriosas", nativeDow: 4 },
+  { templateId: "seg_vit_2000",        label: "Culto da Vitória",                       nativeDow: 1 },
+  { templateId: "qua_palavra_2000",    label: "Culto da Palavra",                       nativeDow: 3 },
+  { templateId: "qui_vitoriosas_2000", label: "Encontro de Crescimento das Vitoriosas",  nativeDow: 4 },
+  // monthly: acontece só na 3ª ocorrência do dia escolhido dentro do mês
+  { templateId: "qua_santaceia_2000",  label: "Santa Ceia (3ª do mês)",                 nativeDow: 3, monthly: true },
 ];
 
 // Regras padrão — usadas enquanto config/recurring não existir no Firestore.
@@ -2550,6 +2552,7 @@ const RECURRING_RULES_DEFAULTS = [
   { id: "mv20261006palavra",    templateId: "qua_palavra_2000",    weekday: 2, from: "2026-10-06" },
   { id: "mv20261006vitoriosas", templateId: "qui_vitoriosas_2000", weekday: 3, from: "2026-10-06" },
   { id: "mv20261006vitoria",    templateId: "seg_vit_2000",        weekday: 4, from: "2026-10-06" },
+  { id: "mv20261006santaceia",  templateId: "qua_santaceia_2000",  weekday: 2, from: "2026-10-06" },
 ];
 
 // Regras em vigor: o que estiver salvo no Firestore ou, na falta, os padrões.
@@ -2595,6 +2598,27 @@ async function saveRecurringRules(rules) {
     showToast("Erro ao salvar mudança: " + err.message, "error");
     return false;
   }
+}
+
+// 3ª ocorrência de um dia da semana no mês — cai sempre entre os dias 15 e 21
+function isThirdWeekdayOfMonth(date, dow) {
+  if (date.getDay() !== dow) return false;
+  const d = date.getDate();
+  return d >= 15 && d <= 21;
+}
+// A data da 3ª ocorrência do dia `dow` no mês de `year`/`month` (0-11)
+function thirdWeekdayOfMonth(year, month, dow) {
+  for (let d = 15; d <= 21; d++) {
+    const t = new Date(year, month, d);
+    if (t.getDay() === dow) return t;
+  }
+  return null;
+}
+// Texto amigável do dia de um culto fixo ("toda terça" / "3ª terça do mês")
+function dowPhrase(dow, monthly) {
+  if (dow === null || dow === undefined || dow < 0) return "não acontece";
+  const nome = DAY_NAMES_MED[Number(dow)].toLowerCase();
+  return monthly ? `3ª ${nome} do mês` : `toda ${nome}`;
 }
 
 // Data (YYYY-MM-DD) em formato brasileiro, para textos da interface
@@ -2656,18 +2680,22 @@ function getRecurringEventsForDate(dateStr) {
     }
   }
 
-  // ─── QUARTA: Santa Ceia da 3ª quarta e EDP antigo (presos à quarta-feira) ───
-  if (dow === 3) {
-    if (isThirdWednesday(date)) {
-      // 3ª quarta do mês = Santa Ceia (local Advec Sobradinho, pregador Pr. Márcio Nascimento — ambos editáveis)
-      events.push(template(
-        "qua_santaceia_2000", "Santa Ceia", "20:00", "SANTA_CEIA",
-        ["preacher", "location"],
-        { location: "Advec Sobradinho", preacher: "Pr. Márcio Nascimento" }
-      ));
-    } else if (!isNew) {
-      events.push(template("qua_edp_2000", "EDP", "20:00", "CULTOS", ["professor", "lesson"]));
-    }
+  // ─── SANTA CEIA MENSAL (3ª ocorrência do dia em vigor) ───
+  // Dia original: 3ª quarta. 🆕 A partir de 06/10/2026: 3ª terça.
+  // Local Advec Sobradinho, pregador Pr. Márcio Nascimento — ambos editáveis por data.
+  const santaCeiaDow = effectiveDowFor("qua_santaceia_2000", 3, dateStr);
+  const isSantaCeiaDay = santaCeiaDow >= 0 && dow === santaCeiaDow && isThirdWeekdayOfMonth(date, santaCeiaDow);
+  if (isSantaCeiaDay) {
+    events.push(template(
+      "qua_santaceia_2000", "Santa Ceia", "20:00", "SANTA_CEIA",
+      ["preacher", "location"],
+      { location: "Advec Sobradinho", preacher: "Pr. Márcio Nascimento" }
+    ));
+  }
+
+  // ─── QUARTA antes de 17/05: EDP (preso à quarta, dava lugar à Santa Ceia) ───
+  if (dow === 3 && !isNew && !isSantaCeiaDay) {
+    events.push(template("qua_edp_2000", "EDP", "20:00", "CULTOS", ["professor", "lesson"]));
   }
 
   // ─── CULTOS SEMANAIS QUE PODEM MUDAR DE DIA (ver MOVABLE_RECURRING) ───
@@ -2680,8 +2708,9 @@ function getRecurringEventsForDate(dateStr) {
   }
 
   // Culto da Palavra (original: quarta, só na estrutura nova).
-  // Na quarta da Santa Ceia (3ª quarta) o Culto da Palavra não acontece.
-  if (isNew && occursOnDate("qua_palavra_2000", 3, dateStr, dow) && !(dow === 3 && isThirdWednesday(date))) {
+  // No dia da Santa Ceia mensal o Culto da Palavra não acontece — a regra segue a
+  // Santa Ceia para onde ela for (antes: 3ª quarta; agora: 3ª terça).
+  if (isNew && occursOnDate("qua_palavra_2000", 3, dateStr, dow) && !isSantaCeiaDay) {
     events.push(template("qua_palavra_2000", "Culto da Palavra", "20:00", "CULTOS", ["preacher"]));
   }
 
@@ -2720,6 +2749,10 @@ function isThirdWednesday(date) {
   return day >= 15 && day <= 21;
 }
 
+// Quinta-feira imediatamente após a 3ª QUARTA do mês (Santa Ceia Regional de BSB).
+// ⚠️ Continua ancorada na 3ª quarta de propósito: é um evento da Advec Brasília e
+// não acompanhou a mudança da Santa Ceia local para a 3ª terça.
+// (nome histórico mantido para não quebrar referências)
 // Quinta-feira imediatamente após a Santa Ceia da 3ª quarta-feira
 // (a quarta da véspera é a 3ª quarta do mês). Cai sempre entre os dias 16 e 22,
 // no mesmo mês — então não há virada de mês a tratar.
@@ -3918,28 +3951,45 @@ async function transferRecurringSchedule(templateId, oldDow, newDow, fromStr) {
   if (!isAdminUser()) return 0;
   const COPY_FIELDS = ["title", "time", "preacher", "professor", "lesson",
                        "location", "notes", "flyer", "featuredInWeekly", "showInWeeklyProgram"];
+  const meta = MOVABLE_RECURRING.find(x => x.templateId === templateId);
   const start = parseDate(fromStr);
   const end = new Date(start.getFullYear() + 1, 11, 31);   // até 31/dez do ano seguinte
   const ops = [];
+
+  const enfileira = (oldDate, newDate) => {
+    const src = state.recurringOverrides[`${templateId}_${oldDate}`];
+    if (!src || oldDate < fromStr || newDate < fromStr) return;
+    if (state.recurringOverrides[`${templateId}_${newDate}`]) return;   // não sobrescreve
+    const patch = {};
+    COPY_FIELDS.forEach(k => { if (src[k] !== undefined) patch[k] = src[k]; });
+    if (Object.keys(patch).length === 0) return;
+    ops.push(setDoc(doc(fbDb, "overrides", `${templateId}_${newDate}`), {
+      ...patch,
+      updatedAt: serverTimestamp(),
+      updatedBy: state.auth.user?.uid || null,
+    }, { merge: true }));
+  };
+
+  // Cultos mensais (3ª do mês): compara mês a mês, porque a 3ª ocorrência do dia
+  // antigo e a do dia novo podem cair em semanas diferentes.
+  if (meta && meta.monthly) {
+    const mCursor = new Date(start.getFullYear(), start.getMonth(), 1);
+    while (mCursor <= end) {
+      const o = thirdWeekdayOfMonth(mCursor.getFullYear(), mCursor.getMonth(), oldDow);
+      const n = thirdWeekdayOfMonth(mCursor.getFullYear(), mCursor.getMonth(), newDow);
+      if (o && n) enfileira(formatDate(o), formatDate(n));
+      mCursor.setMonth(mCursor.getMonth() + 1);
+    }
+    if (ops.length === 0) return 0;
+    try { await Promise.all(ops); return ops.length; }
+    catch (err) { showToast("Erro ao copiar escalas: " + err.message, "error"); return 0; }
+  }
+
   const cursor = startOfWeek(start);
   while (cursor <= end) {
-    const oldDate = formatDate(dateOfDowInWeek(cursor, oldDow));
-    const newDate = formatDate(dateOfDowInWeek(cursor, newDow));
-    const src = state.recurringOverrides[`${templateId}_${oldDate}`];
-    // Só interessa o que já não vai mais acontecer (dia antigo, dentro da vigência)
-    // e desde que o dia novo ainda não tenha informação salva.
-    if (src && oldDate >= fromStr && newDate >= fromStr
-        && !state.recurringOverrides[`${templateId}_${newDate}`]) {
-      const patch = {};
-      COPY_FIELDS.forEach(k => { if (src[k] !== undefined) patch[k] = src[k]; });
-      if (Object.keys(patch).length > 0) {
-        ops.push(setDoc(doc(fbDb, "overrides", `${templateId}_${newDate}`), {
-          ...patch,
-          updatedAt: serverTimestamp(),
-          updatedBy: state.auth.user?.uid || null,
-        }, { merge: true }));
-      }
-    }
+    // Semanais: mesma semana, do dia antigo para o dia novo
+    enfileira(formatDate(dateOfDowInWeek(cursor, oldDow)),
+              formatDate(dateOfDowInWeek(cursor, newDow)));
     cursor.setDate(cursor.getDate() + 7);
   }
   if (ops.length === 0) return 0;
@@ -5206,17 +5256,17 @@ function renderSettingsModal() {
         .map(r => {
           const txt = (r.weekday === null || r.weekday === undefined)
             ? "<strong>deixa de acontecer</strong>"
-            : `passa a ser <strong>toda ${DAY_NAMES_MED[Number(r.weekday)].toLowerCase()}</strong>`;
+            : `passa a ser <strong>${dowPhrase(r.weekday, m.monthly)}</strong>`;
           return `<div class="settings-hint" style="margin: 2px 0 0;">→ a partir de ${brDate(r.from)}, ${txt}</div>`;
         }).join("");
       const hoje = eff < 0
         ? "<strong>não acontece mais</strong>"
-        : `toda <strong>${DAY_NAMES_MED[eff].toLowerCase()}</strong>`;
+        : `<strong>${dowPhrase(eff, m.monthly)}</strong>`;
       return `
         <div class="settings-item" style="align-items: flex-start;">
           <div style="flex: 1; min-width: 0;">
             <span class="settings-item-name">${escapeHtml(m.label)}</span>
-            <div class="settings-hint" style="margin: 2px 0 0;">Hoje: ${hoje} <em style="color: var(--muted);">· dia original: ${DAY_NAMES_MED[m.nativeDow].toLowerCase()}</em></div>
+            <div class="settings-hint" style="margin: 2px 0 0;">Hoje: ${hoje} <em style="color: var(--muted);">· originalmente ${dowPhrase(m.nativeDow, m.monthly)}</em></div>
             ${futuras}
           </div>
         </div>`;
@@ -5232,7 +5282,7 @@ function renderSettingsModal() {
             const label = m ? m.label : r.templateId;
             const desc = (r.weekday === null || r.weekday === undefined)
               ? "<strong>encerrado</strong>"
-              : `passa a ser <strong>toda ${DAY_NAMES_MED[Number(r.weekday)].toLowerCase()}</strong>`;
+              : `passa a ser <strong>${dowPhrase(r.weekday, m && m.monthly)}</strong>`;
             const futura = String(r.from) > hojeStr;
             return `
               <div class="settings-item">
@@ -5250,8 +5300,9 @@ function renderSettingsModal() {
 
     const cultoOptions = MOVABLE_RECURRING
       .map(m => `<option value="${m.templateId}">${escapeHtml(m.label)}</option>`).join("");
+    const primeiroMonthly = !!MOVABLE_RECURRING[0].monthly;
     const dowOptions = [1, 2, 3, 4, 5, 6, 0]
-      .map(d => `<option value="${d}">Toda ${DAY_NAMES_MED[d].toLowerCase()}</option>`).join("");
+      .map(d => `<option value="${d}">${dowPhrase(d, primeiroMonthly).replace(/^./, c => c.toUpperCase())}</option>`).join("");
 
     bodyHtml = `
       <p class="settings-hint">
@@ -5288,8 +5339,9 @@ function renderSettingsModal() {
         </div>
         <div class="field-row">
           <div class="field">
-            <label class="field-label" for="rr-weekday">Novo dia da semana</label>
+            <label class="field-label" for="rr-weekday">Novo dia</label>
             <select id="rr-weekday" class="select">${dowOptions}</select>
+            <span class="settings-hint" id="rr-weekday-hint" style="margin: 4px 0 0;"></span>
           </div>
           <div class="field">
             <label class="field-label" for="rr-from">A partir de (inclusive)</label>
@@ -5907,8 +5959,8 @@ function bindSettingsHandlers() {
 
     const msg = action === "end"
       ? `Encerrar "${m.label}" a partir de ${brDate(from)}?\n\nAs ocorrências anteriores continuam intactas e a mudança pode ser desfeita.`
-      : `"${m.label}" passa a ser toda ${DAY_NAMES_MED[weekday].toLowerCase()}, a partir de ${brDate(from)}?\n\n` +
-        `Até ${brDate(from)} tudo continua como está${oldDow >= 0 ? ` (${DAY_NAMES_MED[oldDow].toLowerCase()})` : ""}. A mudança pode ser desfeita depois.`;
+      : `"${m.label}" passa a ser ${dowPhrase(weekday, m.monthly)}, a partir de ${brDate(from)}?\n\n` +
+        `Até ${brDate(from)} tudo continua como está${oldDow >= 0 ? ` (${dowPhrase(oldDow, m.monthly)})` : ""}. A mudança pode ser desfeita depois.`;
     if (!confirm(msg)) return;
 
     const btn = $("#rr-apply-btn");
@@ -5931,6 +5983,27 @@ function bindSettingsHandlers() {
       if (btn) { btn.disabled = false; btn.innerHTML = orig; }
     }
   });
+
+  // Ajusta os rótulos do seletor de dia conforme o culto escolhido
+  // (mensal = "3ª terça do mês"; semanal = "toda terça")
+  const rrSyncWeekdayLabels = () => {
+    const m = MOVABLE_RECURRING.find(x => x.templateId === $("#rr-template")?.value);
+    const monthly = !!(m && m.monthly);
+    const sel = $("#rr-weekday");
+    if (sel) {
+      Array.from(sel.options).forEach(o => {
+        o.textContent = dowPhrase(Number(o.value), monthly).replace(/^./, c => c.toUpperCase());
+      });
+    }
+    const hint = $("#rr-weekday-hint");
+    if (hint) {
+      hint.textContent = monthly
+        ? "Esse culto acontece só uma vez por mês, na 3ª ocorrência do dia escolhido (entre os dias 15 e 21)."
+        : "";
+    }
+  };
+  $("#rr-template")?.addEventListener("change", rrSyncWeekdayLabels);
+  if ($("#rr-template")) rrSyncWeekdayLabels();
 
   // Mostra/esconde o seletor de dia conforme a ação escolhida
   $("#rr-action")?.addEventListener("change", () => {
