@@ -2728,6 +2728,30 @@ async function saveRecurringSeries(items) {
   }
 }
 
+// ─── Tipos de evento que NÃO pedem pregador(a)/professor(a) ───
+// Guardado em config/ministryOptions → { noPreacher: [chaves] } (admin, regra de "config").
+// Efeito: some o "Pregador(a) a definir" / "Professor(a) a definir" / "Lição a definir"
+// e o evento não fica com aparência de "vazio". Se alguém preencher um nome, ele aparece normal.
+function ministryNoPreacher(key) {
+  return !!(state.noPreacherTypes && state.noPreacherTypes.has(key));
+}
+async function setMinistryNoPreacher(key, on) {
+  if (!isAdminUser()) { showToast("Apenas o administrador pode alterar", "error"); return false; }
+  const set = new Set(state.noPreacherTypes || []);
+  if (on) set.add(key); else set.delete(key);
+  try {
+    await setDoc(doc(fbDb, "config", "ministryOptions"), {
+      noPreacher: [...set],
+      updatedAt: serverTimestamp(),
+      updatedBy: state.auth.user?.uid || null,
+    }, { merge: true });
+    return true;
+  } catch (err) {
+    showToast("Erro ao salvar: " + err.message, "error");
+    return false;
+  }
+}
+
 // Dia anterior a uma data YYYY-MM-DD
 function prevDayStr(ds) {
   const d = parseDate(ds); d.setDate(d.getDate() - 1); return formatDate(d);
@@ -2924,6 +2948,7 @@ const state = {
   siteConfig: {},            // identidade do cabeçalho (config/site no Firestore) — ver SITE_CONFIG_DEFAULTS
   recurringRules: null,      // regras de dia dos cultos fixos (config/recurring); null = usar RECURRING_RULES_DEFAULTS
   recurringSeries: [],       // eventos recorrentes criados pela tela (config/series)
+  noPreacherTypes: new Set(),// tipos de evento que não pedem pregador(a) (config/ministryOptions)
   seriesEditingId: null,     // id da série aberta no formulário (aba Eventos Recorrentes)
 
   // ── Modal de configurações ──
@@ -2978,6 +3003,7 @@ onAuthStateChanged(fbAuth, async (user) => {
     state.monthlyNotices = {};
     state.siteConfig = {};
     state.recurringSeries = [];
+    state.noPreacherTypes = new Set();
     applyHeaderConfig();
     renderAuthScreens();
     return;
@@ -3252,6 +3278,18 @@ function initFirestoreListeners() {
     })
   );
 
+  // Tipos de evento que não pedem pregador(a) (config/ministryOptions)
+  firestoreUnsubscribers.push(
+    onSnapshot(doc(fbDb, "config", "ministryOptions"), (snap) => {
+      const data = snap.exists() ? snap.data() : null;
+      state.noPreacherTypes = new Set((data && Array.isArray(data.noPreacher)) ? data.noPreacher : []);
+      if (state.showSettings && state.settingsTab === "ministries") renderSettingsModal();
+      render();
+    }, (err) => {
+      console.warn("Listener config/ministryOptions indisponível:", err?.message || err);
+    })
+  );
+
   // Eventos recorrentes criados pela tela (config/series)
   firestoreUnsubscribers.push(
     onSnapshot(doc(fbDb, "config", "series"), (snap) => {
@@ -3483,6 +3521,7 @@ function isRecurringEmpty(ev) {
   if (!ev.isRecurring) return false;
   const fields = ev.editableFields || [];
   if (fields.length === 0) return false; // ex: santa ceia transmissão — sempre OK
+  if (ministryNoPreacher(ev.ministry)) return false; // tipo que não pede pregador(a) — nunca "vazio"
   return !fields.some(f => ev[f] && String(ev[f]).trim() !== "");
 }
 
@@ -4485,7 +4524,7 @@ function renderCalendar() {
         line2 = `Prof. ${e.professor}`;
         isGuestLine = lookupGuestStatus(e.professor, e.professorIsGuest);
       }
-      else if (e.isRecurring && (e.editableFields || []).length > 0) {
+      else if (e.isRecurring && (e.editableFields || []).length > 0 && !ministryNoPreacher(e.ministry)) {
         if ((e.editableFields || []).includes("preacher")) line2 = "Pregador(a) a definir";
         else if ((e.editableFields || []).includes("professor")) line2 = "Professor(a) a definir";
       }
@@ -4496,7 +4535,7 @@ function renderCalendar() {
       const hasLessonField = (e.editableFields || []).includes("lesson");
       if (e.lesson) {
         line3 = e.lesson;
-      } else if (e.isRecurring && hasLessonField) {
+      } else if (e.isRecurring && hasLessonField && !ministryNoPreacher(e.ministry)) {
         line3 = "Lição a definir";
       }
 
@@ -4966,6 +5005,7 @@ function personChipHtml(name, isGuest) {
 function renderEventDetails(e, isEmpty) {
   const fields = e.editableFields || (e.isRecurring ? [] : ["preacher", "professor", "lesson", "location"]);
   const parts = [];
+  const askPerson = !ministryNoPreacher(e.ministry);   // false = tipo não pede pregador(a)/professor(a)
 
   // Pregador
   if (e.isRecurring ? fields.includes("preacher") : (e.preacher || !e.isRecurring)) {
@@ -4975,7 +5015,7 @@ function renderEventDetails(e, isEmpty) {
         <svg class="icon-sm event-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         <span><strong>Pregador(a):</strong> ${personChipHtml(e.preacher, isGuest)}</span>
       </div>`);
-    } else if (e.isRecurring && fields.includes("preacher")) {
+    } else if (e.isRecurring && fields.includes("preacher") && askPerson) {
       parts.push(`<div class="event-detail event-detail-empty">
         <svg class="icon-sm event-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         Pregador(a) a definir
@@ -4990,7 +5030,7 @@ function renderEventDetails(e, isEmpty) {
         <svg class="icon-sm event-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
         <span><strong>Professor(a):</strong> ${personChipHtml(e.professor, isGuest)}</span>
       </div>`);
-    } else if (e.isRecurring) {
+    } else if (e.isRecurring && askPerson) {
       parts.push(`<div class="event-detail event-detail-empty">
         <svg class="icon-sm event-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
         Professor(a) a definir
@@ -5004,7 +5044,7 @@ function renderEventDetails(e, isEmpty) {
         <svg class="icon-sm event-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
         <span><strong>Lição:</strong> ${escapeHtml(e.lesson)}</span>
       </div>`);
-    } else if (e.isRecurring) {
+    } else if (e.isRecurring && askPerson) {
       parts.push(`<div class="event-detail event-detail-empty">
         <svg class="icon-sm event-detail-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
         Lição a definir
@@ -5024,6 +5064,20 @@ function renderEventDetails(e, isEmpty) {
     </div>`);
   }
   return parts.join("");
+}
+
+// Botão/etiqueta "Pede pregador(a)" ⇄ "Sem pregador(a)" na aba Tipos de Eventos
+function noPreacherToggleHtml(key) {
+  const on = ministryNoPreacher(key);
+  const style = on
+    ? "background: var(--navy-deep); color: var(--gold-light); border: 1px solid var(--navy-deep);"
+    : "background: transparent; color: var(--muted); border: 1px dashed var(--muted);";
+  const label = on ? "Sem pregador(a)" : "Pede pregador(a)";
+  if (!isAdminUser()) {
+    return on ? `<span style="font-size: 11px; padding: 3px 8px; border-radius: 999px; white-space: nowrap; ${style}">${label}</span>` : "";
+  }
+  return `<button type="button" data-toggle-nopreacher="${escapeHtml(key)}" title="${on ? "Clique para voltar a pedir pregador(a)" : "Clique se este tipo de evento não tem pregador(a)/professor(a)"}"
+    style="font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px; cursor: pointer; white-space: nowrap; ${style}">${on ? "✓ " : ""}${label}</button>`;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -5111,6 +5165,7 @@ function renderSettingsModal() {
         <div class="settings-item">
           <span class="settings-color-dot" style="background: ${m.color}"></span>
           <span class="settings-item-name">${escapeHtml(currentLabel)}${isRenamed ? ' <em style="color: var(--muted); font-size: 11px;">(renomeado)</em>' : ''}</span>
+          ${noPreacherToggleHtml(key)}
           <div class="settings-item-actions">
             ${isAdminUser() ? `<button class="settings-icon-btn" data-edit-ministry="${key}" title="Renomear">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
@@ -5149,6 +5204,7 @@ function renderSettingsModal() {
             <div class="settings-item">
               <span class="settings-color-dot" style="background: ${m.color}; border: 2px solid ${m.text}"></span>
               <span class="settings-item-name">${escapeHtml(m.label)} <em style="color: var(--muted); font-size: 11px;">(personalizado)</em></span>
+              ${noPreacherToggleHtml(key)}
               <div class="settings-item-actions">
                 <button class="settings-icon-btn" data-edit-cm="${key}" title="Editar">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
@@ -5174,6 +5230,7 @@ function renderSettingsModal() {
 
     bodyHtml = `
       <p class="settings-hint">Lista dos <strong>tipos fixos</strong> (cores da legenda oficial — só renomear) e dos <strong>tipos personalizados</strong> (admin cria com nome e cor à escolha).${isAdminUser() ? "" : "<br><strong>Apenas administradores podem alterar.</strong>"}</p>
+      ${isAdminUser() ? `<p class="settings-hint" style="margin-top: 4px;">Clique em <strong>"Pede pregador(a)"</strong> para marcar um tipo como <strong>"Sem pregador(a)"</strong>: os eventos dele deixam de mostrar "Pregador(a) a definir", "Professor(a) a definir" e "Lição a definir". Se alguém preencher um nome mesmo assim, ele aparece normalmente.</p>` : ""}
 
       <div style="margin-top: 8px;">
         <div style="font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .5px; text-transform: uppercase; margin-bottom: 6px;">Tipos fixos</div>
@@ -6058,6 +6115,17 @@ function bindSettingsHandlers() {
   });
 
   // Tipos de eventos: editar label
+  container.querySelectorAll("[data-toggle-nopreacher]").forEach(el => {
+    el.addEventListener("click", async () => {
+      const key = el.dataset.toggleNopreacher;
+      const on = !ministryNoPreacher(key);
+      el.disabled = true;
+      const ok = await setMinistryNoPreacher(key, on);
+      if (ok) showToast(on ? "Este tipo não pede mais pregador(a)" : "Este tipo volta a pedir pregador(a)", "success");
+      el.disabled = false;
+    });
+  });
+
   container.querySelectorAll("[data-edit-ministry]").forEach(el => {
     el.addEventListener("click", () => {
       editingItem = { type: "ministries", value: el.dataset.editMinistry };
