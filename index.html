@@ -2636,6 +2636,104 @@ function dateOfDowInWeek(monday, dow) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// EVENTOS RECORRENTES CRIADOS PELA TELA (séries) — config/series
+// ════════════════════════════════════════════════════════════════════════════
+// Cada série gera ocorrências automáticas no calendário, como os cultos fixos:
+//   freq "weekly"  + interval 1  → toda quarta
+//   freq "weekly"  + interval 2  → quarta sim, quarta não (contado a partir da 1ª data)
+//   freq "weekly"  + interval 3/4 → a cada 3 / 4 semanas
+//   freq "monthly" + nth 1..4 / -1 → 1ª..4ª / última quarta do mês
+// Formato: { id, title, time, ministry, location, preacher, freq, interval,
+//            weekday (0-6), nth, start "YYYY-MM-DD", end "YYYY-MM-DD" | "" }
+// O templateId de cada série é "ser_<id>", então cada data tem slotId próprio
+// (ser_<id>_YYYY-MM-DD) e funciona igual aos fixos: pregador por data, cancelar
+// um dia avulso, flyer, observações, "🔑 aplicar nas próximas".
+
+function getRecurringSeries() {
+  return Array.isArray(state.recurringSeries) ? state.recurringSeries : [];
+}
+function seriesTemplateId(s) { return "ser_" + s.id; }
+
+// 1ª data >= start que cai no dia da semana da série (âncora da contagem quinzenal)
+function seriesAnchorDate(s) {
+  const a = parseDate(s.start);
+  const wd = Number(s.weekday);
+  while (a.getDay() !== wd) a.setDate(a.getDate() + 1);
+  return a;
+}
+
+// A série acontece nesta data?
+function seriesOccursOn(s, dateStr, date) {
+  if (!s || !s.start || s.weekday === null || s.weekday === undefined) return false;
+  if (dateStr < s.start) return false;
+  if (s.end && dateStr > s.end) return false;
+  if (date.getDay() !== Number(s.weekday)) return false;
+  if (s.freq === "monthly") {
+    const d = date.getDate();
+    const nth = Number(s.nth || 1);
+    if (nth === -1) {
+      const dim = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+      return d + 7 > dim;                  // última ocorrência do mês
+    }
+    return Math.ceil(d / 7) === nth;       // 1ª = dias 1-7, 2ª = 8-14, 3ª = 15-21, 4ª = 22-28
+  }
+  const interval = Math.max(1, Number(s.interval || 1));
+  if (interval === 1) return true;
+  const diffDays = Math.round((date - seriesAnchorDate(s)) / 86400000);
+  return diffDays >= 0 && Math.round(diffDays / 7) % interval === 0;
+}
+
+// Texto amigável da frequência ("Quarta sim, quarta não", "Última sexta do mês"…)
+function seriesPhrase(s) {
+  const nome = DAY_NAMES_MED[Number(s.weekday)] || "?";
+  const min = nome.toLowerCase();
+  if (s.freq === "monthly") {
+    const nth = Number(s.nth || 1);
+    return (nth === -1 ? `Última ${min}` : `${nth}ª ${min}`) + " do mês";
+  }
+  const interval = Math.max(1, Number(s.interval || 1));
+  if (interval === 1) return `Toda ${min}`;
+  if (interval === 2) return `${nome} sim, ${min} não (a cada 2 semanas)`;
+  return `A cada ${interval} semanas, na ${min}`;
+}
+
+// Próximas N datas (YYYY-MM-DD) a partir de `fromStr` — usado na prévia e na lista
+function seriesNextDates(s, fromStr, n = 6, maxDays = 800) {
+  const out = [];
+  const startStr = (s.start && s.start > fromStr) ? s.start : fromStr;
+  const cur = parseDate(startStr);
+  for (let i = 0; i < maxDays && out.length < n; i++) {
+    const ds = formatDate(cur);
+    if (s.end && ds > s.end) break;
+    if (seriesOccursOn(s, ds, cur)) out.push(ds);
+    cur.setDate(cur.getDate() + 1);
+  }
+  return out;
+}
+
+// Grava a lista completa de séries (admin-only). Usa o doc config/series —
+// coberto pela mesma Security Rule de "config" (não precisa de regra nova).
+async function saveRecurringSeries(items) {
+  if (!isAdminUser()) { showToast("Apenas o administrador pode alterar eventos recorrentes", "error"); return false; }
+  try {
+    await setDoc(doc(fbDb, "config", "series"), {
+      items,
+      updatedAt: serverTimestamp(),
+      updatedBy: state.auth.user?.uid || null,
+    }, { merge: true });
+    return true;
+  } catch (err) {
+    showToast("Erro ao salvar evento recorrente: " + err.message, "error");
+    return false;
+  }
+}
+
+// Dia anterior a uma data YYYY-MM-DD
+function prevDayStr(ds) {
+  const d = parseDate(ds); d.setDate(d.getDate() - 1); return formatDate(d);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // TEMPLATES DE EVENTOS RECORRENTES
 // ════════════════════════════════════════════════════════════════════════════
 // Campos editáveis disponíveis:
@@ -2727,6 +2825,18 @@ function getRecurringEventsForDate(dateStr) {
     ));
   }
 
+  // ─── EVENTOS RECORRENTES CRIADOS PELA TELA (config/series) ───
+  for (const sr of getRecurringSeries()) {
+    if (!seriesOccursOn(sr, dateStr, date)) continue;
+    const t = template(
+      seriesTemplateId(sr), sr.title || "Evento", sr.time || "20:00", sr.ministry || "CULTOS",
+      ["preacher", "location"],
+      { location: sr.location || "Advec Sobradinho", preacher: sr.preacher ? sr.preacher : undefined }
+    );
+    t.isSeries = true;
+    events.push(t);
+  }
+
   // Adiciona dateStr a cada slotId para diferenciar overrides por data
   return events.map(e => ({ ...e, slotId: `${e.templateId}_${dateStr}`, date: dateStr }));
 }
@@ -2813,10 +2923,12 @@ const state = {
   specialPeriods: [],        // [{ id, name, startDate, endDate, bgColor, textColor }]
   siteConfig: {},            // identidade do cabeçalho (config/site no Firestore) — ver SITE_CONFIG_DEFAULTS
   recurringRules: null,      // regras de dia dos cultos fixos (config/recurring); null = usar RECURRING_RULES_DEFAULTS
+  recurringSeries: [],       // eventos recorrentes criados pela tela (config/series)
+  seriesEditingId: null,     // id da série aberta no formulário (aba Eventos Recorrentes)
 
   // ── Modal de configurações ──
   showSettings: false,
-  settingsTab: "people",      // "people" | "locations" | "ministries" | "notices" | "users" | "header" | "recurring" | "backup" | "periods"
+  settingsTab: "people",      // "people" | "locations" | "ministries" | "notices" | "users" | "header" | "recurring" | "series" | "backup" | "periods"
 
   // ── Autenticação ──
   auth: {
@@ -2865,6 +2977,7 @@ onAuthStateChanged(fbAuth, async (user) => {
     state.specialPeriods = [];
     state.monthlyNotices = {};
     state.siteConfig = {};
+    state.recurringSeries = [];
     applyHeaderConfig();
     renderAuthScreens();
     return;
@@ -3136,6 +3249,21 @@ function initFirestoreListeners() {
       // Falha graciosa: mantém as regras padrão do código, sem alarmar o usuário
       // (ex.: Security Rules de "config" ainda não publicadas).
       console.warn("Listener config/recurring indisponível (usando regras padrão):", err?.message || err);
+    })
+  );
+
+  // Eventos recorrentes criados pela tela (config/series)
+  firestoreUnsubscribers.push(
+    onSnapshot(doc(fbDb, "config", "series"), (snap) => {
+      const data = snap.exists() ? snap.data() : null;
+      state.recurringSeries = (data && Array.isArray(data.items))
+        ? data.items.filter(x => x && x.id)
+        : [];
+      if (state.showSettings && state.settingsTab === "series") renderSettingsModal();
+      render();
+      recomputeSearchMatches();
+    }, (err) => {
+      console.warn("Listener config/series indisponível:", err?.message || err);
     })
   );
 
@@ -5368,6 +5496,139 @@ function renderSettingsModal() {
         Desfazer uma mudança (🗑) faz o culto voltar a seguir a regra anterior — nenhuma escala é perdida no caminho.
       </p>
     `;
+  } else if (tab === "series" && isAdminUser()) {
+    const hojeStr = formatDate(new Date());
+    const series = getRecurringSeries();
+    const allMin = getAllMinistries();
+    const editing = state.seriesEditingId ? series.find(x => x.id === state.seriesEditingId) : null;
+    const f = editing || {
+      title: "", time: "20:00", ministry: "CULTOS", location: "Advec Sobradinho", preacher: "",
+      freq: "weekly", interval: 2, weekday: 3, nth: 1, start: hojeStr, end: "",
+    };
+    const freqValue = f.freq === "monthly" ? "monthly" : ("weekly" + Math.max(1, Number(f.interval || 1)));
+
+    const minOptions = Object.entries(allMin)
+      .map(([k, m]) => `<option value="${escapeHtml(k)}" ${k === f.ministry ? "selected" : ""}>${escapeHtml(m.label)}</option>`).join("");
+    const dowOptions = [1, 2, 3, 4, 5, 6, 0]
+      .map(d => `<option value="${d}" ${Number(f.weekday) === d ? "selected" : ""}>${DAY_NAMES_MED[d]}</option>`).join("");
+    const nthOptions = [[1, "1ª"], [2, "2ª"], [3, "3ª"], [4, "4ª"], [-1, "Última"]]
+      .map(([v, l]) => `<option value="${v}" ${Number(f.nth || 1) === v ? "selected" : ""}>${l}</option>`).join("");
+
+    const list = series.length === 0
+      ? `<div class="settings-empty">Nenhum evento recorrente criado ainda. Preencha o formulário acima para criar o primeiro.</div>`
+      : [...series]
+          .sort((a, b) => String(a.title).localeCompare(String(b.title), "pt-BR"))
+          .map(sr => {
+            const m = allMin[sr.ministry];
+            const prox = seriesNextDates(sr, hojeStr, 1)[0];
+            const status = sr.end && sr.end < hojeStr
+              ? `<strong>encerrado</strong> em ${brDate(sr.end)}`
+              : (prox ? `próxima: <strong>${brDate(prox)}</strong>` : "sem datas futuras");
+            return `
+              <div class="settings-item" style="align-items: flex-start; ${sr.id === state.seriesEditingId ? "outline: 2px solid var(--gold); outline-offset: -2px;" : ""}">
+                <span style="width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; background: ${m ? m.color : "#999"};"></span>
+                <div style="flex: 1; min-width: 0;">
+                  <span class="settings-item-name">${escapeHtml(sr.title)} <em style="color: var(--muted); font-size: 12px;">· ${formatTime(sr.time)}</em></span>
+                  <div class="settings-hint" style="margin: 2px 0 0;">${seriesPhrase(sr)} · desde ${brDate(sr.start)}${sr.end ? ` até ${brDate(sr.end)}` : ""} · ${status}</div>
+                </div>
+                <div class="settings-item-actions">
+                  <button class="settings-icon-btn" data-edit-series="${escapeHtml(sr.id)}" title="Editar / encerrar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                  </button>
+                  <button class="settings-icon-btn danger" data-delete-series="${escapeHtml(sr.id)}" title="Excluir">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </button>
+                </div>
+              </div>`;
+          }).join("");
+
+    bodyHtml = `
+      <p class="settings-hint">
+        Cria um evento que se repete sozinho no calendário — toda semana, a cada 2 semanas (quarta sim, quarta não) ou uma vez por mês.
+        Depois de criado, cada data funciona como um culto fixo: dá para escalar pregador(a), trocar o local, pôr flyer ou cancelar um dia avulso.
+      </p>
+
+      <h4 style="margin: 16px 0 8px; font-family: 'Fraunces', serif; color: var(--navy-deep);">${editing ? "Editar evento recorrente" : "Novo evento recorrente"}</h4>
+      <div class="header-config-grid">
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label" for="sr-title">Nome do evento</label>
+            <input id="sr-title" class="input" type="text" maxlength="80" placeholder="Ex.: Reunião de Oração" value="${escapeHtml(f.title || "")}">
+          </div>
+          <div class="field">
+            <label class="field-label" for="sr-ministry">Tipo de evento</label>
+            <select id="sr-ministry" class="select">${minOptions}</select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label" for="sr-freq">Repetir</label>
+            <select id="sr-freq" class="select">
+              <option value="weekly1" ${freqValue === "weekly1" ? "selected" : ""}>Toda semana</option>
+              <option value="weekly2" ${freqValue === "weekly2" ? "selected" : ""}>A cada 2 semanas (quinzenal)</option>
+              <option value="weekly3" ${freqValue === "weekly3" ? "selected" : ""}>A cada 3 semanas</option>
+              <option value="weekly4" ${freqValue === "weekly4" ? "selected" : ""}>A cada 4 semanas</option>
+              <option value="monthly" ${freqValue === "monthly" ? "selected" : ""}>Uma vez por mês</option>
+            </select>
+          </div>
+          <div class="field-row" style="gap: 8px;">
+            <div class="field" id="sr-nth-wrap" style="${freqValue === "monthly" ? "" : "display:none;"}">
+              <label class="field-label" for="sr-nth">Qual</label>
+              <select id="sr-nth" class="select">${nthOptions}</select>
+            </div>
+            <div class="field" style="${freqValue === "monthly" ? "" : "grid-column: 1 / -1;"}" id="sr-weekday-wrap">
+              <label class="field-label" for="sr-weekday">Dia da semana</label>
+              <select id="sr-weekday" class="select">${dowOptions}</select>
+            </div>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label class="field-label" for="sr-start">Começa em</label>
+            <input id="sr-start" class="input" type="date" value="${escapeHtml(f.start || hojeStr)}">
+            <span class="settings-hint" style="margin: 4px 0 0;" id="sr-start-hint"></span>
+          </div>
+          <div class="field">
+            <label class="field-label" for="sr-end">Termina em (opcional)</label>
+            <input id="sr-end" class="input" type="date" value="${escapeHtml(f.end || "")}">
+            <span class="settings-hint" style="margin: 4px 0 0;">Em branco = sem data para acabar. Para encerrar, informe o último dia.</span>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-row" style="gap: 8px;">
+            <div class="field">
+              <label class="field-label" for="sr-time">Horário</label>
+              <input id="sr-time" class="input" type="time" value="${escapeHtml(f.time || "20:00")}">
+            </div>
+            <div class="field">
+              <label class="field-label" for="sr-location">Local padrão</label>
+              <input id="sr-location" class="input" type="text" list="locations-list" value="${escapeHtml(f.location || "")}">
+            </div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="sr-preacher">Pregador(a) padrão (opcional)</label>
+            <input id="sr-preacher" class="input" type="text" list="people-list" placeholder="Deixe em branco para escalar data a data" value="${escapeHtml(f.preacher || "")}">
+          </div>
+        </div>
+        <div style="padding: 10px 14px; border: 1px solid var(--gold); border-radius: 12px; background: var(--paper);">
+          <div class="settings-hint" style="margin: 0;" id="sr-preview"></div>
+        </div>
+      </div>
+      <div class="settings-add-row" style="justify-content: flex-end; gap: 8px;">
+        ${editing ? `<button id="sr-cancel-btn" class="btn btn-ghost">Cancelar edição</button>` : ``}
+        <button id="sr-save-btn" class="btn btn-primary">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          ${editing ? "Salvar alterações" : "Criar evento recorrente"}
+        </button>
+      </div>
+
+      <h4 style="margin: 20px 0 8px; font-family: 'Fraunces', serif; color: var(--navy-deep);">Eventos recorrentes criados</h4>
+      <div class="settings-list">${list}</div>
+      <p class="settings-hint" style="margin-top: 6px;">
+        Para mudar a frequência ou o dia sem mexer nas datas que já passaram, edite o evento: o sistema pergunta se deve
+        manter o passado como está. Para parar de vez, preencha "Termina em".
+      </p>
+    `;
   } else if (tab === "backup") {
     bodyHtml = `
       <p class="settings-hint">
@@ -5429,6 +5690,7 @@ function renderSettingsModal() {
     ${isAdminUser() ? `<button class="settings-tab ${tab === 'users' ? 'active' : ''}" data-settings-tab="users">Usuários</button>` : ''}
     ${isAdminUser() ? `<button class="settings-tab ${tab === 'header' ? 'active' : ''}" data-settings-tab="header">Cabeçalho</button>` : ''}
     ${isAdminUser() ? `<button class="settings-tab ${tab === 'recurring' ? 'active' : ''}" data-settings-tab="recurring">Cultos Fixos</button>` : ''}
+    ${isAdminUser() ? `<button class="settings-tab ${tab === 'series' ? 'active' : ''}" data-settings-tab="series">Eventos Recorrentes</button>` : ''}
     ${isAdminUser() ? `<button class="settings-tab ${tab === 'backup' ? 'active' : ''}" data-settings-tab="backup">Backup</button>` : ''}
   `;
 
@@ -5593,11 +5855,12 @@ function bindSettingsHandlers() {
     el.addEventListener("click", async () => {
       const newTab = el.dataset.settingsTab;
       // Defesa: tabs admin-only não podem ser abertas por não-admin
-      if ((newTab === "users" || newTab === "backup") && !isAdminUser()) {
+      if ((newTab === "users" || newTab === "backup" || newTab === "series" || newTab === "recurring" || newTab === "header") && !isAdminUser()) {
         showToast("Acesso restrito a administradores", "error");
         return;
       }
       state.settingsTab = newTab;
+      state.seriesEditingId = null;
       editingItem = null;
       // Se mudou para a aba de usuários, carrega a lista
       if (state.settingsTab === "users" && isAdminUser()) {
@@ -6029,6 +6292,140 @@ function bindSettingsHandlers() {
       const ok = await saveRecurringRules(rules.filter(x => String(x.id) !== String(id)));
       if (ok) showToast("Mudança desfeita", "success");
     });
+  });
+
+  // ── Aba Eventos Recorrentes (séries criadas pela tela, admin-only) ──
+  const srReadForm = () => {
+    const freqSel = $("#sr-freq")?.value || "weekly1";
+    const monthly = freqSel === "monthly";
+    return {
+      title:    ($("#sr-title")?.value || "").trim(),
+      ministry: $("#sr-ministry")?.value || "CULTOS",
+      freq:     monthly ? "monthly" : "weekly",
+      interval: monthly ? 1 : Number(freqSel.replace("weekly", "")) || 1,
+      nth:      monthly ? Number($("#sr-nth")?.value || 1) : null,
+      weekday:  Number($("#sr-weekday")?.value),
+      start:    $("#sr-start")?.value || "",
+      end:      $("#sr-end")?.value || "",
+      time:     $("#sr-time")?.value || "20:00",
+      location: ($("#sr-location")?.value || "").trim(),
+      preacher: ($("#sr-preacher")?.value || "").trim(),
+    };
+  };
+  const srUpdatePreview = () => {
+    const prev = $("#sr-preview");
+    if (!prev) return;
+    const f = srReadForm();
+    const monthly = f.freq === "monthly";
+    const nthWrap = $("#sr-nth-wrap"), wdWrap = $("#sr-weekday-wrap");
+    if (nthWrap) nthWrap.style.display = monthly ? "" : "none";
+    if (wdWrap) wdWrap.style.gridColumn = monthly ? "" : "1 / -1";
+    const hint = $("#sr-start-hint");
+    if (hint) hint.textContent = (!monthly && f.interval > 1)
+      ? "A 1ª ocorrência é o primeiro dia escolhido a partir desta data; a contagem das semanas parte dela."
+      : "";
+    if (!f.start) { prev.innerHTML = "Informe a data de início para ver as próximas datas."; return; }
+    const datas = seriesNextDates(f, f.start, 8);
+    prev.innerHTML = datas.length
+      ? `📅 <strong>${seriesPhrase(f)}</strong>, às ${formatTime(f.time)}. Próximas datas: ${datas.map(brDate).map(d => d.slice(0, 5)).join(", ")}${datas.length === 8 ? "…" : ""}`
+      : "Nenhuma data cai dentro do período escolhido — confira o dia da semana e as datas.";
+  };
+  ["#sr-freq", "#sr-nth", "#sr-weekday", "#sr-start", "#sr-end", "#sr-time"].forEach(sel => {
+    $(sel)?.addEventListener("change", srUpdatePreview);
+    $(sel)?.addEventListener("input", srUpdatePreview);
+  });
+  if ($("#sr-preview")) srUpdatePreview();
+
+  $("#sr-cancel-btn")?.addEventListener("click", () => {
+    state.seriesEditingId = null;
+    renderSettingsModal();
+  });
+
+  container.querySelectorAll("[data-edit-series]").forEach(el => {
+    el.addEventListener("click", () => {
+      state.seriesEditingId = el.dataset.editSeries;
+      renderSettingsModal();
+      container.querySelector(".modal-body, .settings-body")?.scrollTo?.({ top: 0, behavior: "smooth" });
+    });
+  });
+
+  container.querySelectorAll("[data-delete-series]").forEach(el => {
+    el.addEventListener("click", async () => {
+      if (!isAdminUser()) { showToast("Acesso restrito a administradores", "error"); return; }
+      const id = el.dataset.deleteSeries;
+      const all = getRecurringSeries();
+      const sr = all.find(x => x.id === id);
+      if (!sr) return;
+      const hojeStr = formatDate(new Date());
+      const passou = sr.start < hojeStr;
+      if (!confirm(
+        `Excluir "${sr.title}"?\n\n` +
+        (passou
+          ? "⚠️ Ele some do calendário em TODAS as datas, inclusive as que já passaram.\nSe a ideia é só parar daqui pra frente, use ✏️ Editar e preencha \"Termina em\"."
+          : "Ele some do calendário em todas as datas.") +
+        "\n\nContinuar?"
+      )) return;
+      const ok = await saveRecurringSeries(all.filter(x => x.id !== id));
+      if (ok) {
+        if (state.seriesEditingId === id) state.seriesEditingId = null;
+        showToast("Evento recorrente excluído", "success");
+      }
+    });
+  });
+
+  $("#sr-save-btn")?.addEventListener("click", async () => {
+    if (!isAdminUser()) { showToast("Acesso restrito a administradores", "error"); return; }
+    const f = srReadForm();
+    if (!f.title) { showToast("Informe o nome do evento", "error"); return; }
+    if (!f.start || f.start.length < 10) { showToast("Informe a data de início", "error"); return; }
+    if (f.end && f.end < f.start) { showToast("A data de término é anterior ao início", "error"); return; }
+    if (seriesNextDates(f, f.start, 1).length === 0) {
+      showToast("Nenhuma data cai no período escolhido — confira o dia da semana", "error"); return;
+    }
+
+    const all = getRecurringSeries();
+    const hojeStr = formatDate(new Date());
+    const btn = $("#sr-save-btn");
+    const orig = btn ? btn.innerHTML : "";
+    if (btn) { btn.disabled = true; btn.innerHTML = "Salvando…"; }
+    try {
+      const old = state.seriesEditingId ? all.find(x => x.id === state.seriesEditingId) : null;
+      let novaLista;
+      if (!old) {
+        const nova = { id: "s" + Date.now().toString(36), ...f };
+        novaLista = [...all, nova];
+        const datas = seriesNextDates(nova, nova.start, 3).map(brDate);
+        if (!confirm(`Criar "${nova.title}" — ${seriesPhrase(nova)}, às ${formatTime(nova.time)}?\n\nPrimeiras datas: ${datas.join(", ")}…`)) return;
+      } else {
+        const padraoMudou = ["freq", "interval", "nth", "weekday", "start"].some(k => String(old[k] ?? "") !== String(f[k] ?? ""));
+        const temPassado = old.start < hojeStr;
+        if (padraoMudou && temPassado && f.start <= hojeStr) {
+          // Mudou dia/frequência de uma série que já aconteceu: oferece preservar o passado
+          if (confirm(
+            `Manter as datas que já passaram exatamente como estão?\n\n` +
+            `OK → "${old.title}" continua como era até ontem e a nova regra (${seriesPhrase(f)}) vale de hoje (${brDate(hojeStr)}) em diante.\n` +
+            `Cancelar → escolher se a mudança vale para todas as datas.`
+          )) {
+            const encerrada = { ...old, end: prevDayStr(hojeStr) };
+            const nova = { ...f, id: "s" + Date.now().toString(36), start: hojeStr };
+            novaLista = all.map(x => x.id === old.id ? encerrada : x).concat(nova);
+          } else {
+            if (!confirm("A mudança vai valer para TODAS as datas, inclusive as que já passaram. Continuar?")) return;
+            novaLista = all.map(x => x.id === old.id ? { ...old, ...f } : x);
+          }
+        } else {
+          novaLista = all.map(x => x.id === old.id ? { ...old, ...f } : x);
+        }
+      }
+      const ok = await saveRecurringSeries(novaLista);
+      if (ok) {
+        showToast(old ? "Evento recorrente atualizado" : "Evento recorrente criado", "success");
+        state.seriesEditingId = null;
+        renderSettingsModal();
+      }
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+    }
   });
 
   // ── Aba Backup: handlers (admin-only) ──
