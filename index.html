@@ -2663,7 +2663,7 @@ function dateOfDowInWeek(monday, dow) {
 //   freq "weekly"  + interval 2  → quarta sim, quarta não (contado a partir da 1ª data)
 //   freq "weekly"  + interval 3/4 → a cada 3 / 4 semanas
 //   freq "monthly" + nth 1..4 / -1 → 1ª..4ª / última quarta do mês
-// Formato: { id, title, time, ministry, location, preacher, freq, interval,
+// Formato: { id, title, time, ministry, location, preacher, notes, freq, interval,
 //            weekday (0-6), nth, start "YYYY-MM-DD", end "YYYY-MM-DD" | "" }
 // O templateId de cada série é "ser_<id>", então cada data tem slotId próprio
 // (ser_<id>_YYYY-MM-DD) e funciona igual aos fixos: pregador por data, cancelar
@@ -2901,6 +2901,7 @@ function getRecurringEventsForDate(dateStr) {
       ["preacher", "location"],
       { location: sr.location || "Advec Sobradinho", preacher: sr.preacher ? sr.preacher : undefined }
     );
+    if (sr.notes) t.notes = sr.notes;   // observações padrão (editáveis por data)
     t.isSeries = true;
     events.push(t);
   }
@@ -5630,7 +5631,7 @@ function renderSettingsModal() {
     const allMin = getAllMinistries();
     const editing = state.seriesEditingId ? series.find(x => x.id === state.seriesEditingId) : null;
     const f = editing || {
-      title: "", time: "20:00", ministry: "CULTOS", location: "Advec Sobradinho", preacher: "",
+      title: "", time: "20:00", ministry: "CULTOS", location: "Advec Sobradinho", preacher: "", notes: "",
       freq: "weekly", interval: 2, weekday: 3, nth: 1, start: hojeStr, end: "",
     };
     const freqValue = f.freq === "monthly" ? "monthly" : ("weekly" + Math.max(1, Number(f.interval || 1)));
@@ -5737,6 +5738,11 @@ function renderSettingsModal() {
             <label class="field-label" for="sr-preacher">Pregador(a) padrão (opcional)</label>
             <input id="sr-preacher" class="input" type="text" list="people-list" placeholder="Deixe em branco para escalar data a data" value="${escapeHtml(f.preacher || "")}">
           </div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="sr-notes">Observações padrão (opcional)</label>
+          <textarea id="sr-notes" class="textarea" rows="3" placeholder="Aparecem em todas as datas. Ex.: GVV Misto - Líder: ... (Anfitriã: ...)">${escapeHtml(f.notes || "")}</textarea>
+          <div class="settings-hint" style="margin: 4px 0 0;">Dá para ajustar numa data específica abrindo o evento naquele dia.</div>
         </div>
         <div style="padding: 10px 14px; border: 1px solid var(--gold); border-radius: 12px; background: var(--paper);">
           <div class="settings-hint" style="margin: 0;" id="sr-preview"></div>
@@ -6460,6 +6466,7 @@ function bindSettingsHandlers() {
       time:     $("#sr-time")?.value || "20:00",
       location: ($("#sr-location")?.value || "").trim(),
       preacher: ($("#sr-preacher")?.value || "").trim(),
+      notes:    ($("#sr-notes")?.value || "").trim(),
     };
   };
   const srUpdatePreview = () => {
