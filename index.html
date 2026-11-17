@@ -1495,6 +1495,24 @@ main {
 }
 .event-card-actions .delete-confirm:hover { background: #8C443F; color: #FFFDF7; }
 
+/* Eventos fixos cancelados — restaurar */
+.cancelled-box {
+  margin-top: 10px; padding: 10px 12px; border: 1px dashed var(--rose);
+  border-radius: 10px; background: rgba(160,82,76,.06);
+}
+.cancelled-box-title {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
+  color: var(--rose); margin-bottom: 6px;
+}
+.cancelled-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0; }
+.cancelled-item-name { font-size: 13px; color: var(--ink-soft); min-width: 0; }
+.cancelled-item-name strong { color: var(--navy-deep); }
+.restore-btn {
+  flex-shrink: 0; padding: 6px 12px; border-radius: 7px; background: var(--navy-deep);
+  color: #FFFDF7; font-size: 11.5px; font-weight: 700; letter-spacing: .3px; cursor: pointer;
+}
+.restore-btn:hover { background: var(--navy); }
+
 .event-meta {
   display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px;
   margin-top: 8px; font-size: 12.5px; color: var(--ink-soft);
@@ -4703,12 +4721,15 @@ function renderWeekView(customDates) {
         </header>
         <div class="week-day-body">
           ${bodyHtml}
+          ${isInactive ? "" : cancelledBoxHtml(day.dateStr)}
           ${addBtn}
           ${periodsHtml}
         </div>
       </section>
     `;
   }).join("");
+
+  bindRestoreHandlers(container);
 
   // Bindings do botão "Adicionar evento" de cada dia
   container.querySelectorAll("[data-add-date]").forEach((el) => {
@@ -4880,7 +4901,7 @@ function renderDayModal() {
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
           </button>
         </div>
-        <div class="modal-body">${eventsHtml}</div>
+        <div class="modal-body">${eventsHtml}${cancelledBoxHtml(state.selectedDay)}</div>
         <div class="modal-footer">
           ${canEdit() ? `<button id="add-event-day" class="btn btn-primary">
             <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
@@ -4904,6 +4925,41 @@ function renderDayModal() {
     renderEventModal();
   });
   bindEventCardHandlers($("#day-modal-container"));
+  bindRestoreHandlers($("#day-modal-container"));
+}
+
+// ─── Eventos fixos cancelados: listar e restaurar ───
+// Retorna os recorrentes (cultos fixos e eventos recorrentes) que foram cancelados naquele dia.
+function getCancelledRecurringForDate(dateStr) {
+  if (dateStr < AGENDA_START) return [];
+  return getRecurringEventsForDate(dateStr).filter(t => state.cancelledRecurring.has(t.slotId));
+}
+
+function cancelledBoxHtml(dateStr) {
+  if (!canEdit()) return "";
+  const list = getCancelledRecurringForDate(dateStr);
+  if (list.length === 0) return "";
+  return `
+    <div class="cancelled-box">
+      <div class="cancelled-box-title">Cancelado${list.length > 1 ? "s" : ""} neste dia</div>
+      ${list.map(t => `
+        <div class="cancelled-item">
+          <div class="cancelled-item-name"><strong>${escapeHtml(t.title)}</strong>${t.time ? ` · ${escapeHtml(formatTime(t.time))}` : ""}</div>
+          <button type="button" class="restore-btn" data-restore-slot="${t.slotId}">↩ Restaurar</button>
+        </div>`).join("")}
+    </div>`;
+}
+
+function bindRestoreHandlers(rootEl) {
+  if (!rootEl) return;
+  rootEl.querySelectorAll("[data-restore-slot]").forEach((el) => {
+    el.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      el.disabled = true;
+      await uncancelRecurring(el.dataset.restoreSlot);
+      showToast("Evento restaurado com os parâmetros padrão", "success");
+    });
+  });
 }
 
 // ─── Helpers compartilhados de card de evento (usados em day modal e week view) ───
